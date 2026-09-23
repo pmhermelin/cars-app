@@ -313,6 +313,78 @@ namespace CarsApp
             return false;
         }
 
+        // VFDN-125: creates a new user object; its id inside the dealership is the next free number
+        public User CreateUser(string username, string password, string email, string phone,
+                               int dealershipId, string userType)
+        {
+            int agencyUserId = CountUsersInDealership(dealershipId) + 1;
+            return new User(username, password, email, phone, dealershipId, userType, agencyUserId);
+        }
+
+        // Checks all the rules of a new user. Returns "" when everything is valid, otherwise the error message.
+        public string ValidateNewUser(string username, string password, string email, string phone, int dealershipId)
+        {
+            if (!HasUserCapacity())
+            {
+                return "The system is full, no more users can be added.";
+            }
+            if (username == null || username.Length == 0)
+            {
+                return "Username cannot be empty.";
+            }
+            if (!IsStrongPassword(password))
+            {
+                return "Password must be at least 8 characters and include an uppercase letter, a lowercase letter and a digit.";
+            }
+            if (!IsValidEmail(email))
+            {
+                return "Invalid email address.";
+            }
+            if (!IsValidPhone(phone))
+            {
+                return "Invalid phone number (10 digits, starting with 05).";
+            }
+            if (UsernameExists(username))
+            {
+                return "Username already exists.";
+            }
+            if (EmailExists(email))
+            {
+                return "Email already exists.";
+            }
+            if (FindDealership(dealershipId) == null)
+            {
+                return "Dealership not found.";
+            }
+            return "";
+        }
+
+        // REQ-001: registers a new user. Returns "" on success, otherwise the error message.
+        // Only customers can register themselves - salespeople are added by a manager (REQ-014).
+        public string RegisterUser(string username, string password, string email, string phone,
+                                   int dealershipId, string userType)
+        {
+            if (!IsValidUserType(userType))
+            {
+                return "Invalid user type.";
+            }
+            if (userType != "Customer")
+            {
+                return "Only customers can register. Salespeople are added by the dealership manager.";
+            }
+
+            string error = ValidateNewUser(username, password, email, phone, dealershipId);
+            if (error != "")
+            {
+                return error;
+            }
+
+            // VFDN-126: save the user in the array (it is linked to the dealership by its dealership id)
+            User user = CreateUser(username, password, email, phone, dealershipId, userType);
+            AddUserToArray(user);
+            return "";
+        }
+
         // ===== Menu =====
 
         public void Run()
