@@ -1,0 +1,10 @@
+# Build output
+bin/
+obj/
+
+# Editor settings
+.vscode/
+.vs/
+
+# OS files
+.DS_Store
