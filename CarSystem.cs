@@ -215,6 +215,104 @@ namespace CarsApp
             }
         }
 
+        // ===== REQ-001: registration (VFDN-93) =====
+
+        // VFDN-121: is there room for another user
+        public bool HasUserCapacity()
+        {
+            return userCount < MAX_USERS;
+        }
+
+        // VFDN-122: at least 8 characters, with an uppercase letter, a lowercase letter and a digit
+        public bool IsStrongPassword(string password)
+        {
+            if (password == null || password.Length < 8)
+            {
+                return false;
+            }
+
+            bool hasUpper = false;
+            bool hasLower = false;
+            bool hasDigit = false;
+            for (int i = 0; i < password.Length; i++)
+            {
+                char c = password[i];
+                if (char.IsUpper(c))
+                {
+                    hasUpper = true;
+                }
+                else if (char.IsLower(c))
+                {
+                    hasLower = true;
+                }
+                else if (char.IsDigit(c))
+                {
+                    hasDigit = true;
+                }
+            }
+            return hasUpper && hasLower && hasDigit;
+        }
+
+        // VFDN-122: one '@' that is not first, a '.' after it that is not last, and no spaces
+        public bool IsValidEmail(string email)
+        {
+            if (email == null || email.Length == 0 || email.IndexOf(' ') != -1)
+            {
+                return false;
+            }
+
+            int atIndex = email.IndexOf('@');
+            if (atIndex <= 0 || atIndex != email.LastIndexOf('@'))
+            {
+                return false;
+            }
+
+            int dotIndex = email.LastIndexOf('.');
+            return dotIndex > atIndex + 1 && dotIndex < email.Length - 1;
+        }
+
+        // VFDN-122: Israeli mobile number - 10 digits starting with 05
+        public bool IsValidPhone(string phone)
+        {
+            if (phone == null || phone.Length != 10 || phone[0] != '0' || phone[1] != '5')
+            {
+                return false;
+            }
+            for (int i = 0; i < phone.Length; i++)
+            {
+                if (!char.IsDigit(phone[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // VFDN-123: the user type must be one of the types the system knows
+        public bool IsValidUserType(string userType)
+        {
+            return userType == "Customer" || userType == "Salesperson" || userType == "Manager";
+        }
+
+        // VFDN-124: is the username already taken
+        public bool UsernameExists(string username)
+        {
+            return FindUser(username) != null;
+        }
+
+        // VFDN-124: is the email already taken (not case sensitive)
+        public bool EmailExists(string email)
+        {
+            for (int i = 0; i < userCount; i++)
+            {
+                if (users[i].GetEmail().ToLower() == email.ToLower())
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // ===== Menu =====
 
         public void Run()
