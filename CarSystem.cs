@@ -385,6 +385,52 @@ namespace CarsApp
             return "";
         }
 
+        // VFDN-160: registration screen
+        private void RegisterMenu()
+        {
+            Console.WriteLine();
+            Console.WriteLine("----- Register -----");
+            if (!HasUserCapacity())
+            {
+                Console.WriteLine("The system is full, no more users can be added.");
+                return;
+            }
+
+            Console.WriteLine("User type: 1. Customer  2. Salesperson  3. Manager");
+            int typeChoice = ReadInt("Choose user type: ");
+            string userType = "";
+            if (typeChoice == 1)
+            {
+                userType = "Customer";
+            }
+            else if (typeChoice == 2)
+            {
+                userType = "Salesperson";
+            }
+            else if (typeChoice == 3)
+            {
+                userType = "Manager";
+            }
+
+            string username = ReadText("Username: ");
+            string password = ReadText("Password: ");
+            string email = ReadText("Email: ");
+            string phone = ReadText("Phone: ");
+            Console.WriteLine("Dealerships:");
+            PrintDealerships();
+            int dealershipId = ReadInt("Dealership number: ");
+
+            string result = RegisterUser(username, password, email, phone, dealershipId, userType);
+            if (result == "")
+            {
+                Console.WriteLine("Registration completed successfully. You can log in now.");
+            }
+            else
+            {
+                Console.WriteLine("Registration failed: " + result);
+            }
+        }
+
         // ===== Menu =====
 
         public void Run()
@@ -409,14 +455,22 @@ namespace CarsApp
         {
             Console.WriteLine();
             Console.WriteLine("===== Car Dealership System =====");
+            Console.WriteLine("1. Register");
             Console.WriteLine("0. Exit");
             string choice = ReadText("Choose: ");
 
-            if (choice == "0")
+            if (choice == "1")
+            {
+                RegisterMenu();
+            }
+            else if (choice == "0")
             {
                 return false;
             }
-            Console.WriteLine("Invalid choice.");
+            else
+            {
+                Console.WriteLine("Invalid choice.");
+            }
             return true;
         }
 
