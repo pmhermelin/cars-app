@@ -31,6 +31,7 @@ namespace CarsApp
             RunInfrastructureTests();
             RunRegisterTests();
             RunLoginTests();
+            RunLogoutTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -154,6 +155,25 @@ namespace CarsApp
             other.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", other.FindDealershipById(2));
             User boss = other.LoginWith("boss", "Boss_123");
             Check(boss != null && boss.IsManager() && boss.GetDealership().GetName() == "Kia Tel Aviv", "manager logs in with his dealership");
+        }
+
+        // VFDN-95: REQ-015 logout (design 7.17)
+        private static void RunLogoutTests()
+        {
+            Console.WriteLine("--- REQ-015 Logout (VFDN-95) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            system.TryCreateUser("dana", "Dana_123", "dana@mail.com", "0521234567", "Customer", null);
+            system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", system.FindDealershipById(1));
+            system.LoginWith("dana", "Dana_123");
+            int users = system.GetUserCount();
+
+            system.Logout();
+            Check(system.GetCurrentUser() == null, "currentUser is reset");
+            Check(system.GetUserCount() == users && system.FindUserByUsername("dana") != null, "T-22 data is kept after logout");
+            Check(system.LoginWith("dana", "Dana_123") != null, "the same user can log in again");
+            system.Logout();
+            Check(system.LoginWith("boss", "Boss_123") != null && system.GetCurrentUser().IsManager(), "another user can log in after logout");
         }
     }
 }
