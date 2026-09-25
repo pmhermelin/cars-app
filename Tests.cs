@@ -30,6 +30,7 @@ namespace CarsApp
 
             RunInfrastructureTests();
             RunRegisterTests();
+            RunLoginTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -131,6 +132,28 @@ namespace CarsApp
             }
             Check(!full.HasFreeUserSlot() && !full.TryCreateUser("last", "Pass_123", "last@m.com", "0500000000", "Customer", null),
                   "registration fails when the users array is full");
+        }
+
+        // VFDN-94: REQ-002 login (design 7.2)
+        private static void RunLoginTests()
+        {
+            Console.WriteLine("--- REQ-002 Login (VFDN-94) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            system.TryCreateUser("dana", "Dana_123", "dana@mail.com", "0521234567", "Customer", null);
+            system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", system.FindDealershipById(2));
+
+            Check(system.LoginWith("dana", "wrong_12") == null && system.GetCurrentUser() == null, "T-04 wrong password - currentUser stays null");
+            Check(system.LoginWith("nobody", "Dana_123") == null && system.GetCurrentUser() == null, "unknown username - currentUser stays null");
+            Check(system.LoginWith("dana", "dana_123") == null, "password is case sensitive");
+
+            User dana = system.LoginWith("dana", "Dana_123");
+            Check(dana != null && system.GetCurrentUser() == dana && dana.IsCustomer(), "customer logs in and becomes currentUser");
+
+            CarDealerShipSystem other = new CarDealerShipSystem();
+            other.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", other.FindDealershipById(2));
+            User boss = other.LoginWith("boss", "Boss_123");
+            Check(boss != null && boss.IsManager() && boss.GetDealership().GetName() == "Kia Tel Aviv", "manager logs in with his dealership");
         }
     }
 }
