@@ -482,6 +482,107 @@ namespace CarsApp
             return user;
         }
 
+        // ===== REQ-014: add salesperson (design 7.16) =====
+
+        // The user must be the logged in user (design decision 15.12), a manager, and linked to a dealership
+        private bool IsLoggedInManager(User user)
+        {
+            return user != null && user == currentUser && user.IsManager() && user.GetDealership() != null;
+        }
+
+        // Creates a salesperson in the manager's dealership after every rule was checked.
+        // Returns false and changes nothing when any rule fails.
+        public bool TryAddSalesperson(User manager, string username, string password, string email, string phone)
+        {
+            if (!IsLoggedInManager(manager))
+            {
+                return false;
+            }
+            int index = FindFreeUserIndex();
+            if (index == -1)
+            {
+                return false;
+            }
+            if (IsBlank(username) || UsernameExists(username))
+            {
+                return false;
+            }
+            if (!IsStrongPassword(password) || !IsValidEmail(email) || !IsValidPhone(phone))
+            {
+                return false;
+            }
+
+            User salesperson = new User(nextUserId, username, password, phone, email, ROLE_SALESPERSON);
+            salesperson.SetDealership(manager.GetDealership());
+            users[index] = salesperson;
+            userCount++;
+            nextUserId++;
+            return true;
+        }
+
+        // Interactive: the same validation loops as registration (REQ-001); 0 cancels.
+        public bool AddSalesperson(User manager)
+        {
+            if (!IsLoggedInManager(manager))
+            {
+                Console.WriteLine("✗ רק מנהל סוכנות מחובר יכול להוסיף איש מכירות");
+                return false;
+            }
+            if (FindFreeUserIndex() == -1)
+            {
+                Console.WriteLine("✗ אין מקום להוספת משתמשים נוספים");
+                return false;
+            }
+
+            Console.WriteLine("----- הוספת איש מכירות ל-" + manager.GetDealership().GetName() + " (0 לביטול) -----");
+
+            string username = Input.ReadText("שם משתמש: ");
+            while (!Input.IsCancel(username) && (IsBlank(username) || UsernameExists(username)))
+            {
+                Console.WriteLine("✗ שם המשתמש ריק או תפוס, נסה שוב");
+                username = Input.ReadText("שם משתמש: ");
+            }
+            if (Input.IsCancel(username))
+            {
+                return false;
+            }
+
+            string password = Input.ReadText("סיסמה: ");
+            while (!Input.IsCancel(password) && !IsStrongPassword(password))
+            {
+                Console.WriteLine("✗ הסיסמה חייבת להכיל לפחות " + PASSWORD_MIN_LENGTH + " תווים, ספרה ותו מיוחד ($, %, _)");
+                password = Input.ReadText("סיסמה: ");
+            }
+            if (Input.IsCancel(password))
+            {
+                return false;
+            }
+
+            string email = Input.ReadText("דוא\"ל: ");
+            while (!Input.IsCancel(email) && !IsValidEmail(email))
+            {
+                Console.WriteLine("✗ כתובת דוא\"ל לא תקינה");
+                email = Input.ReadText("דוא\"ל: ");
+            }
+            if (Input.IsCancel(email))
+            {
+                return false;
+            }
+
+            string phone = Input.ReadText("טלפון: ");
+            while (!Input.IsCancel(phone) && !IsValidPhone(phone))
+            {
+                Console.WriteLine("✗ מספר טלפון לא תקין (10 ספרות, מתחיל ב-05)");
+                phone = Input.ReadText("טלפון: ");
+            }
+            if (Input.IsCancel(phone))
+            {
+                return false;
+            }
+
+            return TryAddSalesperson(manager, username, password, email, phone);
+        }
+
         // ===== REQ-015: logout (design 7.17) =====
 
         // Resets currentUser. The data in the arrays is kept. Program then returns to the main menu.
