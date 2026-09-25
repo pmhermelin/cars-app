@@ -215,6 +215,222 @@ namespace CarsApp
             }
         }
 
+        // ===== REQ-001: registration (VFDN-93) =====
+
+        // VFDN-121: is there room for another user
+        public bool HasUserCapacity()
+        {
+            return userCount < MAX_USERS;
+        }
+
+        // VFDN-122: at least 8 characters, with an uppercase letter, a lowercase letter and a digit
+        public bool IsStrongPassword(string password)
+        {
+            if (password == null || password.Length < 8)
+            {
+                return false;
+            }
+
+            bool hasUpper = false;
+            bool hasLower = false;
+            bool hasDigit = false;
+            for (int i = 0; i < password.Length; i++)
+            {
+                char c = password[i];
+                if (char.IsUpper(c))
+                {
+                    hasUpper = true;
+                }
+                else if (char.IsLower(c))
+                {
+                    hasLower = true;
+                }
+                else if (char.IsDigit(c))
+                {
+                    hasDigit = true;
+                }
+            }
+            return hasUpper && hasLower && hasDigit;
+        }
+
+        // VFDN-122: one '@' that is not first, a '.' after it that is not last, and no spaces
+        public bool IsValidEmail(string email)
+        {
+            if (email == null || email.Length == 0 || email.IndexOf(' ') != -1)
+            {
+                return false;
+            }
+
+            int atIndex = email.IndexOf('@');
+            if (atIndex <= 0 || atIndex != email.LastIndexOf('@'))
+            {
+                return false;
+            }
+
+            int dotIndex = email.LastIndexOf('.');
+            return dotIndex > atIndex + 1 && dotIndex < email.Length - 1;
+        }
+
+        // VFDN-122: Israeli mobile number - 10 digits starting with 05
+        public bool IsValidPhone(string phone)
+        {
+            if (phone == null || phone.Length != 10 || phone[0] != '0' || phone[1] != '5')
+            {
+                return false;
+            }
+            for (int i = 0; i < phone.Length; i++)
+            {
+                if (!char.IsDigit(phone[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // VFDN-123: the user type must be one of the types the system knows
+        public bool IsValidUserType(string userType)
+        {
+            return userType == "Customer" || userType == "Salesperson" || userType == "Manager";
+        }
+
+        // VFDN-124: is the username already taken
+        public bool UsernameExists(string username)
+        {
+            return FindUser(username) != null;
+        }
+
+        // VFDN-124: is the email already taken (not case sensitive)
+        public bool EmailExists(string email)
+        {
+            for (int i = 0; i < userCount; i++)
+            {
+                if (users[i].GetEmail().ToLower() == email.ToLower())
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // VFDN-125: creates a new user object; its id inside the dealership is the next free number
+        public User CreateUser(string username, string password, string email, string phone,
+                               int dealershipId, string userType)
+        {
+            int agencyUserId = CountUsersInDealership(dealershipId) + 1;
+            return new User(username, password, email, phone, dealershipId, userType, agencyUserId);
+        }
+
+        // Checks all the rules of a new user. Returns "" when everything is valid, otherwise the error message.
+        public string ValidateNewUser(string username, string password, string email, string phone, int dealershipId)
+        {
+            if (!HasUserCapacity())
+            {
+                return "The system is full, no more users can be added.";
+            }
+            if (username == null || username.Length == 0)
+            {
+                return "Username cannot be empty.";
+            }
+            if (!IsStrongPassword(password))
+            {
+                return "Password must be at least 8 characters and include an uppercase letter, a lowercase letter and a digit.";
+            }
+            if (!IsValidEmail(email))
+            {
+                return "Invalid email address.";
+            }
+            if (!IsValidPhone(phone))
+            {
+                return "Invalid phone number (10 digits, starting with 05).";
+            }
+            if (UsernameExists(username))
+            {
+                return "Username already exists.";
+            }
+            if (EmailExists(email))
+            {
+                return "Email already exists.";
+            }
+            if (FindDealership(dealershipId) == null)
+            {
+                return "Dealership not found.";
+            }
+            return "";
+        }
+
+        // REQ-001: registers a new user. Returns "" on success, otherwise the error message.
+        // Only customers can register themselves - salespeople are added by a manager (REQ-014).
+        public string RegisterUser(string username, string password, string email, string phone,
+                                   int dealershipId, string userType)
+        {
+            if (!IsValidUserType(userType))
+            {
+                return "Invalid user type.";
+            }
+            if (userType != "Customer")
+            {
+                return "Only customers can register. Salespeople are added by the dealership manager.";
+            }
+
+            string error = ValidateNewUser(username, password, email, phone, dealershipId);
+            if (error != "")
+            {
+                return error;
+            }
+
+            // VFDN-126: save the user in the array (it is linked to the dealership by its dealership id)
+            User user = CreateUser(username, password, email, phone, dealershipId, userType);
+            AddUserToArray(user);
+            return "";
+        }
+
+        // VFDN-160: registration screen
+        private void RegisterMenu()
+        {
+            Console.WriteLine();
+            Console.WriteLine("----- Register -----");
+            if (!HasUserCapacity())
+            {
+                Console.WriteLine("The system is full, no more users can be added.");
+                return;
+            }
+
+            Console.WriteLine("User type: 1. Customer  2. Salesperson  3. Manager");
+            int typeChoice = ReadInt("Choose user type: ");
+            string userType = "";
+            if (typeChoice == 1)
+            {
+                userType = "Customer";
+            }
+            else if (typeChoice == 2)
+            {
+                userType = "Salesperson";
+            }
+            else if (typeChoice == 3)
+            {
+                userType = "Manager";
+            }
+
+            string username = ReadText("Username: ");
+            string password = ReadText("Password: ");
+            string email = ReadText("Email: ");
+            string phone = ReadText("Phone: ");
+            Console.WriteLine("Dealerships:");
+            PrintDealerships();
+            int dealershipId = ReadInt("Dealership number: ");
+
+            string result = RegisterUser(username, password, email, phone, dealershipId, userType);
+            if (result == "")
+            {
+                Console.WriteLine("Registration completed successfully. You can log in now.");
+            }
+            else
+            {
+                Console.WriteLine("Registration failed: " + result);
+            }
+        }
+
         // ===== Menu =====
 
         public void Run()
@@ -239,14 +455,22 @@ namespace CarsApp
         {
             Console.WriteLine();
             Console.WriteLine("===== Car Dealership System =====");
+            Console.WriteLine("1. Register");
             Console.WriteLine("0. Exit");
             string choice = ReadText("Choose: ");
 
-            if (choice == "0")
+            if (choice == "1")
+            {
+                RegisterMenu();
+            }
+            else if (choice == "0")
             {
                 return false;
             }
-            Console.WriteLine("Invalid choice.");
+            else
+            {
+                Console.WriteLine("Invalid choice.");
+            }
             return true;
         }
 
