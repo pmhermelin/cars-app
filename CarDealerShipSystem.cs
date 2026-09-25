@@ -450,6 +450,38 @@ namespace CarsApp
             return TryCreateUser(username, password, email, phone, role, dealership);
         }
 
+        // ===== REQ-002: login (design 7.2) =====
+
+        // Finds the user and checks the password. On success saves currentUser and returns the user,
+        // otherwise returns null and currentUser stays as it was.
+        public User LoginWith(string username, string password)
+        {
+            for (int i = 0; i < userCount; i++)
+            {
+                if (users[i].GetUsername() == username && users[i].CheckPassword(password))
+                {
+                    currentUser = users[i];
+                    return currentUser;
+                }
+            }
+            return null;
+        }
+
+        // Interactive login. The error message does not tell which field was wrong.
+        public User Login()
+        {
+            Console.WriteLine("----- התחברות -----");
+            string username = Input.ReadText("שם משתמש: ");
+            string password = Input.ReadText("סיסמה: ");
+
+            User user = LoginWith(username, password);
+            if (user == null)
+            {
+                Console.WriteLine("✗ שם משתמש או סיסמה שגויים");
+            }
+            return user;
+        }
+
         // Prints the dealerships that have no manager and returns how many were printed
         private int PrintDealershipsWithoutOwner()
         {
