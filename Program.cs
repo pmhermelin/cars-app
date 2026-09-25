@@ -127,7 +127,14 @@ namespace CarsApp
                 }
                 else if (choice == 6)
                 {
-                    NotReady("REQ-014");
+                    if (system.AddSalesperson(user))
+                    {
+                        Console.WriteLine("✓ איש המכירות נוסף לסוכנות");
+                    }
+                    else
+                    {
+                        Console.WriteLine("✗ איש המכירות לא נוסף");
+                    }
                 }
                 else if (choice == 7)
                 {
