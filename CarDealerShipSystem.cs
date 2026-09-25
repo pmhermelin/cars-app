@@ -482,6 +482,15 @@ namespace CarsApp
             return user;
         }
 
+        // ===== REQ-015: logout (design 7.17) =====
+
+        // Resets currentUser. The data in the arrays is kept. Program then returns to the main menu.
+        public void Logout()
+        {
+            currentUser = null;
+            Console.WriteLine("✓ התנתקת בהצלחה");
+        }
+
         // Prints the dealerships that have no manager and returns how many were printed
         private int PrintDealershipsWithoutOwner()
         {

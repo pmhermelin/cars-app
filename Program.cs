@@ -131,6 +131,7 @@ namespace CarsApp
                 }
                 else if (choice == 7)
                 {
+                    system.Logout();
                     inMenu = false;
                 }
                 else
@@ -178,6 +179,7 @@ namespace CarsApp
                 }
                 else if (choice == 6)
                 {
+                    system.Logout();
                     inMenu = false;
                 }
                 else
@@ -229,6 +231,7 @@ namespace CarsApp
                 }
                 else if (choice == 6)
                 {
+                    system.Logout();
                     inMenu = false;
                 }
                 else
