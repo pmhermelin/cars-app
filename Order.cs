@@ -2,63 +2,39 @@ using System;
 
 namespace CarsApp
 {
-    // A purchase or rental order of one or more cars
+    // Design 6.4: a customer's request to buy or rent up to 3 cars from one dealership.
+    // Always created as Pending. Never changes the status of a car - that is the system's job.
     public class Order
     {
-        public const int MAX_CARS_IN_ORDER = 10;
+        public const int MAX_CARS_PER_ORDER = 3;
 
-        // VFDN-115: order fields
-        private int orderId;
-        private string customerUsername;
-        private int dealershipId;
+        private int orderNumber;
+        private User customer;
         private Car[] cars;
         private int carCount;
-        private string transactionType; // Purchase, Rental
-        private string status;          // Pending, Approved, Rejected, Cancelled
+        private string orderType; // Sale or Rental
         private DateTime orderDate;
+        private string status;    // Pending / Approved / Rejected / Cancelled
 
-        // VFDN-116: constructor - a new order starts as Pending with no cars
-        public Order(int orderId, string customerUsername, int dealershipId, string transactionType)
+        public Order(int orderNumber, User customer, string orderType)
         {
-            this.orderId = orderId;
-            this.customerUsername = customerUsername;
-            this.dealershipId = dealershipId;
-            this.transactionType = transactionType;
-            this.cars = new Car[MAX_CARS_IN_ORDER];
+            this.orderNumber = orderNumber;
+            this.customer = customer;
+            this.orderType = orderType;
+            this.cars = new Car[MAX_CARS_PER_ORDER];
             this.carCount = 0;
-            this.status = "Pending";
             this.orderDate = DateTime.Now;
+            this.status = CarDealerShipSystem.ORDER_PENDING;
         }
 
-        // VFDN-117: Get methods
-        public int GetOrderId()
+        public int GetOrderNumber()
         {
-            return orderId;
+            return orderNumber;
         }
 
-        public string GetCustomerUsername()
+        public User GetCustomer()
         {
-            return customerUsername;
-        }
-
-        public int GetDealershipId()
-        {
-            return dealershipId;
-        }
-
-        public string GetTransactionType()
-        {
-            return transactionType;
-        }
-
-        public string GetStatus()
-        {
-            return status;
-        }
-
-        public DateTime GetOrderDate()
-        {
-            return orderDate;
+            return customer;
         }
 
         public int GetCarCount()
@@ -75,22 +51,10 @@ namespace CarsApp
             return cars[index];
         }
 
-        // VFDN-117: status update - accepts only the four allowed values
-        public bool SetStatus(string newStatus)
-        {
-            if (newStatus == "Pending" || newStatus == "Approved" ||
-                newStatus == "Rejected" || newStatus == "Cancelled")
-            {
-                status = newStatus;
-                return true;
-            }
-            return false;
-        }
-
-        // VFDN-120: adds a car to the order, returns false when the order is full
+        // Adds a car while building the order. Returns false when the order is full.
         public bool AddCar(Car car)
         {
-            if (carCount >= MAX_CARS_IN_ORDER)
+            if (car == null || carCount >= MAX_CARS_PER_ORDER)
             {
                 return false;
             }
@@ -99,7 +63,26 @@ namespace CarsApp
             return true;
         }
 
-        // VFDN-120: sum of the prices of all the cars in the order
+        // All the cars in an order belong to the same dealership, so the first car decides
+        public CarDealership GetDealership()
+        {
+            if (carCount == 0)
+            {
+                return null;
+            }
+            return cars[0].GetDealership();
+        }
+
+        public string GetOrderType()
+        {
+            return orderType;
+        }
+
+        public DateTime GetOrderDate()
+        {
+            return orderDate;
+        }
+
         public double GetTotalPrice()
         {
             double total = 0;
@@ -108,6 +91,60 @@ namespace CarsApp
                 total = total + cars[i].GetPrice();
             }
             return total;
+        }
+
+        public string GetStatus()
+        {
+            return status;
+        }
+
+        public bool IsPending()
+        {
+            return status == CarDealerShipSystem.ORDER_PENDING;
+        }
+
+        public bool BelongsTo(User user)
+        {
+            return customer == user;
+        }
+
+        // ===== Status transitions (only from Pending) =====
+
+        public bool Approve()
+        {
+            if (!IsPending())
+            {
+                return false;
+            }
+            status = CarDealerShipSystem.ORDER_APPROVED;
+            return true;
+        }
+
+        public bool Reject()
+        {
+            if (!IsPending())
+            {
+                return false;
+            }
+            status = CarDealerShipSystem.ORDER_REJECTED;
+            return true;
+        }
+
+        public bool Cancel()
+        {
+            if (!IsPending())
+            {
+                return false;
+            }
+            status = CarDealerShipSystem.ORDER_CANCELLED;
+            return true;
+        }
+
+        // "Order #1025 | 17/08/2026 | Sale | 2 cars | Pending" - no customer name and no total
+        public override string ToString()
+        {
+            return "Order #" + orderNumber + " | " + orderDate.ToString("dd/MM/yyyy") + " | " + orderType
+                   + " | " + carCount + " cars | " + status;
         }
     }
 }
