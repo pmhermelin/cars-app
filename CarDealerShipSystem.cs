@@ -314,5 +314,155 @@ namespace CarsApp
             }
             return true;
         }
+
+        // ===== REQ-001: registration (design 7.1) =====
+
+        // Creates a user after every rule was checked. A manager gets a dealership that has no manager yet.
+        // Returns false and changes nothing when any rule fails.
+        public bool TryCreateUser(string username, string password, string email, string phone,
+                                  string role, CarDealership dealership)
+        {
+            int index = FindFreeUserIndex();
+            if (index == -1)
+            {
+                return false;
+            }
+            if (IsBlank(username) || UsernameExists(username))
+            {
+                return false;
+            }
+            if (!IsStrongPassword(password) || !IsValidEmail(email) || !IsValidPhone(phone))
+            {
+                return false;
+            }
+            if (role != ROLE_CUSTOMER && role != ROLE_MANAGER)
+            {
+                return false; // salespeople are created only by a manager (REQ-014)
+            }
+            if (role == ROLE_MANAGER && (dealership == null || dealership.HasOwner()))
+            {
+                return false;
+            }
+
+            User user = new User(nextUserId, username, password, phone, email, role);
+            if (role == ROLE_MANAGER)
+            {
+                dealership.SetOwner(user);
+                user.SetDealership(dealership);
+            }
+            users[index] = user;
+            userCount++;
+            nextUserId++;
+            return true;
+        }
+
+        // Interactive registration: every field is asked again until it is valid; 0 cancels.
+        public bool CreateUser()
+        {
+            if (FindFreeUserIndex() == -1)
+            {
+                Console.WriteLine("✗ אין מקום להוספת משתמשים נוספים");
+                return false;
+            }
+
+            Console.WriteLine("----- הרשמה (0 לביטול) -----");
+
+            string username = Input.ReadText("שם משתמש: ");
+            while (!Input.IsCancel(username) && (IsBlank(username) || UsernameExists(username)))
+            {
+                Console.WriteLine("✗ שם המשתמש ריק או תפוס, נסה שוב");
+                username = Input.ReadText("שם משתמש: ");
+            }
+            if (Input.IsCancel(username))
+            {
+                return false;
+            }
+
+            string password = Input.ReadText("סיסמה: ");
+            while (!Input.IsCancel(password) && !IsStrongPassword(password))
+            {
+                Console.WriteLine("✗ הסיסמה חייבת להכיל לפחות " + PASSWORD_MIN_LENGTH + " תווים, ספרה ותו מיוחד ($, %, _)");
+                password = Input.ReadText("סיסמה: ");
+            }
+            if (Input.IsCancel(password))
+            {
+                return false;
+            }
+
+            string email = Input.ReadText("דוא\"ל: ");
+            while (!Input.IsCancel(email) && !IsValidEmail(email))
+            {
+                Console.WriteLine("✗ כתובת דוא\"ל לא תקינה");
+                email = Input.ReadText("דוא\"ל: ");
+            }
+            if (Input.IsCancel(email))
+            {
+                return false;
+            }
+
+            string phone = Input.ReadText("טלפון: ");
+            while (!Input.IsCancel(phone) && !IsValidPhone(phone))
+            {
+                Console.WriteLine("✗ מספר טלפון לא תקין (10 ספרות, מתחיל ב-05)");
+                phone = Input.ReadText("טלפון: ");
+            }
+            if (Input.IsCancel(phone))
+            {
+                return false;
+            }
+
+            int roleChoice = Input.ReadInt("תפקיד: 1 = לקוח, 2 = מנהל סוכנות: ");
+            while (roleChoice != 0 && roleChoice != 1 && roleChoice != 2)
+            {
+                Console.WriteLine("✗ בחירה לא חוקית");
+                roleChoice = Input.ReadInt("תפקיד: 1 = לקוח, 2 = מנהל סוכנות: ");
+            }
+            if (roleChoice == 0)
+            {
+                return false;
+            }
+
+            string role = ROLE_CUSTOMER;
+            CarDealership dealership = null;
+            if (roleChoice == 2)
+            {
+                role = ROLE_MANAGER;
+                int freeCount = PrintDealershipsWithoutOwner();
+                if (freeCount == 0)
+                {
+                    Console.WriteLine("✗ אין סוכנות פנויה - לכל הסוכנויות כבר יש מנהל");
+                    return false;
+                }
+                int dealershipId = Input.ReadInt("מספר סוכנות: ");
+                dealership = FindDealershipById(dealershipId);
+                while (dealershipId != 0 && (dealership == null || dealership.HasOwner()))
+                {
+                    Console.WriteLine("✗ יש לבחור סוכנות פנויה מהרשימה");
+                    dealershipId = Input.ReadInt("מספר סוכנות: ");
+                    dealership = FindDealershipById(dealershipId);
+                }
+                if (dealershipId == 0)
+                {
+                    return false;
+                }
+            }
+
+            return TryCreateUser(username, password, email, phone, role, dealership);
+        }
+
+        // Prints the dealerships that have no manager and returns how many were printed
+        private int PrintDealershipsWithoutOwner()
+        {
+            int count = 0;
+            for (int i = 0; i < dealershipCount; i++)
+            {
+                if (!dealerships[i].HasOwner())
+                {
+                    Console.WriteLine("Agency #" + dealerships[i].GetId() + " | " + dealerships[i].ToString());
+                    count++;
+                }
+            }
+            return count;
+        }
     }
 }
