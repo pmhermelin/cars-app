@@ -123,7 +123,7 @@ namespace CarsApp
                 }
                 else if (choice == 5)
                 {
-                    NotReady("REQ-006");
+                    system.PrintInventoryReport(user);
                 }
                 else if (choice == 6)
                 {

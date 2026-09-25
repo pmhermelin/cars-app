@@ -583,6 +583,76 @@ namespace CarsApp
             return TryAddSalesperson(manager, username, password, email, phone);
         }
 
+        // ===== REQ-006: inventory report (design 7.9) =====
+
+        // Number of cars of a dealership with a given status
+        public int CountCarsByStatus(CarDealership dealership, string status)
+        {
+            int count = 0;
+            for (int i = 0; i < carCount; i++)
+            {
+                if (cars[i].GetDealership() == dealership && cars[i].GetStatus() == status)
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        // Prints the cars of the manager's dealership and a summary line by status.
+        // The counters are local, so a repeated report never adds up on the previous one.
+        public void PrintInventoryReport(User manager)
+        {
+            if (!IsLoggedInManager(manager))
+            {
+                Console.WriteLine("✗ רק מנהל סוכנות מחובר יכול להפיק דוח מלאי");
+                return;
+            }
+
+            CarDealership dealership = manager.GetDealership();
+            int total = 0;
+            int available = 0;
+            int reserved = 0;
+            int sold = 0;
+            int rented = 0;
+
+            Console.WriteLine("===== דוח מלאי - " + dealership.GetName() + " =====");
+            for (int i = 0; i < carCount; i++)
+            {
+                Car car = cars[i];
+                if (car.GetDealership() == dealership)
+                {
+                    Console.WriteLine("Car #" + car.GetId() + " | " + car.GetCategory() + " | " + car.GetManufacturer() + " "
+                                      + car.GetModel() + " (" + car.GetYear() + ") | " + car.GetPrice() + " NIS | " + car.GetStatus());
+                    total++;
+                    if (car.GetStatus() == STATUS_AVAILABLE)
+                    {
+                        available++;
+                    }
+                    else if (car.GetStatus() == STATUS_RESERVED)
+                    {
+                        reserved++;
+                    }
+                    else if (car.GetStatus() == STATUS_SOLD)
+                    {
+                        sold++;
+                    }
+                    else if (car.GetStatus() == STATUS_RENTED)
+                    {
+                        rented++;
+                    }
+                }
+            }
+
+            if (total == 0)
+            {
+                Console.WriteLine("אין רכבים במלאי!");
+                return;
+            }
+            Console.WriteLine("סה\"כ: " + total + " | זמינים: " + available + " | שמורים: " + reserved
+                              + " | נמכרו: " + sold + " | מושכרים: " + rented);
+        }
+
         // ===== REQ-015: logout (design 7.17) =====
 
         // Resets currentUser. The data in the arrays is kept. Program then returns to the main menu.
