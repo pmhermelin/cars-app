@@ -33,6 +33,7 @@ namespace CarsApp
             RunLoginTests();
             RunLogoutTests();
             RunAddSalespersonTests();
+            RunInventoryReportTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -213,6 +214,48 @@ namespace CarsApp
             Check(!system.TryAddSalesperson(boss, "avi", "Avi_1234", "avi@cars.com", "0531234567"), "T-22 blocked after logout");
             User logged = system.LoginWith("yossi", "Yossi_12");
             Check(logged == yossi && logged.GetDealership() == mazda, "T-20 new salesperson logs in with the right dealership");
+        }
+
+        // VFDN-101: REQ-006 inventory report (design 7.9)
+        private static void RunInventoryReportTests()
+        {
+            Console.WriteLine("--- REQ-006 Inventory Report (VFDN-101) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            CarDealership kia = system.FindDealershipById(2);
+            system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", haifa);
+            User boss = system.FindUserByUsername("boss");
+
+            system.LoginWith("boss", "Boss_123");
+            Console.WriteLine("(empty inventory report:)");
+            system.PrintInventoryReport(boss);
+            Check(system.CountDealershipCars(haifa) == 0, "empty inventory - report prints the empty message");
+
+            Car c1 = MakeCar(system, "1111111", 100000, "Sale", haifa);
+            Car c2 = MakeCar(system, "2222222", 120000, "Both", haifa);
+            Car c3 = MakeCar(system, "3333333", 90000, "Rental", haifa);
+            Car other = MakeCar(system, "4444444", 80000, "Sale", kia);
+            system.AddCarToInventory(c1);
+            system.AddCarToInventory(c2);
+            system.AddCarToInventory(c3);
+            system.AddCarToInventory(other);
+            c2.MarkAsReserved();
+            c3.MarkAsReserved();
+            c3.MarkAsRented();
+
+            system.PrintInventoryReport(boss);
+            Check(system.CountDealershipCars(haifa) == 3, "only the manager's dealership cars are counted");
+            Check(system.CountCarsByStatus(haifa, "Available") == 1 && system.CountCarsByStatus(haifa, "Reserved") == 1
+                  && system.CountCarsByStatus(haifa, "Rented") == 1 && system.CountCarsByStatus(haifa, "Sold") == 0,
+                  "summary by status is correct");
+            system.PrintInventoryReport(boss);
+            Check(system.CountCarsByStatus(haifa, "Available") == 1, "a second report gives the same numbers");
+
+            system.Logout();
+            int carsBefore = system.GetCarCount();
+            system.PrintInventoryReport(boss);
+            Check(system.GetCarCount() == carsBefore, "not logged in - report is blocked and nothing changes");
         }
     }
 }
