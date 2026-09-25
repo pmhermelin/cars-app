@@ -32,6 +32,7 @@ namespace CarsApp
             RunRegisterTests();
             RunLoginTests();
             RunLogoutTests();
+            RunAddSalespersonTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -174,6 +175,44 @@ namespace CarsApp
             Check(system.LoginWith("dana", "Dana_123") != null, "the same user can log in again");
             system.Logout();
             Check(system.LoginWith("boss", "Boss_123") != null && system.GetCurrentUser().IsManager(), "another user can log in after logout");
+        }
+
+        // VFDN-107: REQ-014 add salesperson (design 7.16)
+        private static void RunAddSalespersonTests()
+        {
+            Console.WriteLine("--- REQ-014 Add Salesperson (VFDN-107) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership mazda = system.FindDealershipById(3);
+            system.TryCreateUser("dana", "Dana_123", "dana@mail.com", "0521234567", "Customer", null);
+            system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", mazda);
+            User dana = system.FindUserByUsername("dana");
+            User boss = system.FindUserByUsername("boss");
+            int count = system.GetUserCount();
+
+            Check(!system.TryAddSalesperson(boss, "yossi", "Yossi_12", "yossi@cars.com", "0531234567"), "manager who is not logged in is rejected");
+            system.LoginWith("dana", "Dana_123");
+            Check(!system.TryAddSalesperson(dana, "yossi", "Yossi_12", "yossi@cars.com", "0531234567"), "customer is rejected");
+            system.Logout();
+            Check(system.GetUserCount() == count, "rejected attempts create no user");
+
+            system.LoginWith("boss", "Boss_123");
+            Check(!system.TryAddSalesperson(dana, "yossi", "Yossi_12", "yossi@cars.com", "0531234567"), "a user that is not currentUser is rejected");
+            Check(system.TryAddSalesperson(boss, "yossi", "Yossi_12", "yossi@cars.com", "0531234567"), "manager adds a valid salesperson");
+            User yossi = system.FindUserByUsername("yossi");
+            Check(yossi != null && yossi.IsSalesperson() && yossi.GetDealership() == mazda, "salesperson is linked to the manager's dealership");
+
+            count = system.GetUserCount();
+            Check(!system.TryAddSalesperson(boss, "yossi", "Yossi_12", "other@cars.com", "0531234567"), "taken username is rejected");
+            Check(!system.TryAddSalesperson(boss, "avi", "weakpass", "avi@cars.com", "0531234567"), "weak password is rejected");
+            Check(!system.TryAddSalesperson(boss, "avi", "Avi_1234", "avi-cars.com", "0531234567"), "invalid email is rejected");
+            Check(!system.TryAddSalesperson(boss, "avi", "Avi_1234", "avi@cars.com", "12345"), "invalid phone is rejected");
+            Check(system.GetUserCount() == count, "failed additions did not change the data");
+
+            system.Logout();
+            Check(!system.TryAddSalesperson(boss, "avi", "Avi_1234", "avi@cars.com", "0531234567"), "T-22 blocked after logout");
+            User logged = system.LoginWith("yossi", "Yossi_12");
+            Check(logged == yossi && logged.GetDealership() == mazda, "T-20 new salesperson logs in with the right dealership");
         }
     }
 }
