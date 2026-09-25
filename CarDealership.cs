@@ -1,31 +1,29 @@
 namespace CarsApp
 {
-    // A car dealership
+    // Design 6.2: a car or motorcycle dealership. Created only in the system constructor.
+    // Holds a reference to its manager (owner). Does not hold an array of cars.
     public class CarDealership
     {
-        public const int MAX_CARS_PER_DEALERSHIP = 1000;
-
-        // VFDN-115: dealership fields
-        private int dealershipId;
+        private int id;
         private string name;
+        private string dealershipType; // Cars or Motorcycles - descriptive only
         private string address;
-        private string managerUsername;
-        private int maxCars;
+        private string phone;
+        private User owner;
 
-        // VFDN-116: constructor
-        public CarDealership(int dealershipId, string name, string address, string managerUsername)
+        public CarDealership(int id, string name, string dealershipType, string address, string phone)
         {
-            this.dealershipId = dealershipId;
+            this.id = id;
             this.name = name;
+            this.dealershipType = dealershipType;
             this.address = address;
-            this.managerUsername = managerUsername;
-            this.maxCars = MAX_CARS_PER_DEALERSHIP;
+            this.phone = phone;
+            this.owner = null;
         }
 
-        // VFDN-117: Get methods
-        public int GetDealershipId()
+        public int GetId()
         {
-            return dealershipId;
+            return id;
         }
 
         public string GetName()
@@ -33,35 +31,51 @@ namespace CarsApp
             return name;
         }
 
+        public string GetDealershipType()
+        {
+            return dealershipType;
+        }
+
         public string GetAddress()
         {
             return address;
         }
 
-        public string GetManagerUsername()
+        public string GetPhone()
         {
-            return managerUsername;
+            return phone;
         }
 
-        public int GetMaxCars()
+        public User GetOwner()
         {
-            return maxCars;
+            return owner;
         }
 
-        // VFDN-117: Set methods
-        public void SetName(string name)
+        // One manager per dealership: returns false if a manager already exists
+        public bool SetOwner(User user)
         {
-            this.name = name;
+            if (owner != null || user == null)
+            {
+                return false;
+            }
+            owner = user;
+            return true;
         }
 
-        public void SetAddress(string address)
+        public bool HasOwner()
         {
-            this.address = address;
+            return owner != null;
         }
 
+        public bool IsOwner(User user)
+        {
+            return owner != null && owner == user;
+        }
+
+        // Does not print the manager
         public override string ToString()
         {
-            return dealershipId + ". " + name + " - " + address;
+            return name + " (" + dealershipType + ") | " + phone + " | " + address;
         }
     }
 }

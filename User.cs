@@ -1,39 +1,36 @@
 namespace CarsApp
 {
-    // VFDN-89: a user of the system - customer, salesperson or dealership manager
+    // Design 6.1: a single user of the system - Customer, Manager or Salesperson.
+    // Holds a reference to its dealership (null for a customer). Has no getter for the password.
     public class User
     {
-        // VFDN-108: user fields
+        private int id;
         private string username;
         private string password;
-        private string email;
         private string phone;
-        private int dealershipId;
-        private string userType;
-        private int agencyUserId;
+        private string email;
+        private string role;
+        private CarDealership dealership;
 
-        // VFDN-109: constructor
-        public User(string username, string password, string email, string phone,
-                    int dealershipId, string userType, int agencyUserId)
+        public User(int id, string username, string password, string phone, string email, string role)
         {
+            this.id = id;
             this.username = username;
             this.password = password;
-            this.email = email;
             this.phone = phone;
-            this.dealershipId = dealershipId;
-            this.userType = userType;
-            this.agencyUserId = agencyUserId;
+            this.email = email;
+            this.role = role;
+            this.dealership = null;
         }
 
-        // VFDN-110: Get methods
+        public int GetId()
+        {
+            return id;
+        }
+
         public string GetUsername()
         {
             return username;
-        }
-
-        public string GetEmail()
-        {
-            return email;
         }
 
         public string GetPhone()
@@ -41,52 +38,57 @@ namespace CarsApp
             return phone;
         }
 
-        public int GetDealershipId()
+        public string GetEmail()
         {
-            return dealershipId;
+            return email;
         }
 
-        public string GetUserType()
+        public string GetRole()
         {
-            return userType;
+            return role;
         }
 
-        public int GetAgencyUserId()
+        public CarDealership GetDealership()
         {
-            return agencyUserId;
+            return dealership;
         }
 
-        // VFDN-110: Set methods (only for fields that are allowed to change)
-        public void SetPassword(string password)
+        // Links the user to a dealership. Returns false if the user is already linked.
+        public bool SetDealership(CarDealership dealership)
         {
-            this.password = password;
+            if (this.dealership != null || dealership == null)
+            {
+                return false;
+            }
+            this.dealership = dealership;
+            return true;
         }
 
-        public void SetEmail(string email)
+        public bool IsManager()
         {
-            this.email = email;
+            return role == CarDealerShipSystem.ROLE_MANAGER;
         }
 
-        public void SetPhone(string phone)
+        public bool IsSalesperson()
         {
-            this.phone = phone;
+            return role == CarDealerShipSystem.ROLE_SALESPERSON;
         }
 
-        public void SetDealershipId(int dealershipId)
+        public bool IsCustomer()
         {
-            this.dealershipId = dealershipId;
+            return role == CarDealerShipSystem.ROLE_CUSTOMER;
         }
 
-        // VFDN-111: returns true only when the input matches the saved password (case sensitive)
-        public bool CheckPassword(string input)
+        // The only way to verify the password - it never leaves the object
+        public bool CheckPassword(string pass)
         {
-            return password == input;
+            return password == pass;
         }
 
-        // The password is never printed
+        // Never includes the password
         public override string ToString()
         {
-            return username + " (" + userType + "), email: " + email + ", phone: " + phone;
+            return username + " | " + role + " | " + email + " | " + phone;
         }
     }
 }
