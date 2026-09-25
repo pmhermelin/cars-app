@@ -3,6 +3,7 @@ using System;
 namespace CarsApp
 {
     // Simple test runner: dotnet run -- test
+    // Test names refer to the test plan in the design document (chapter 13, T-01..T-28).
     public class Tests
     {
         private static int passed = 0;
@@ -34,79 +35,102 @@ namespace CarsApp
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
         }
 
-        // VFDN-133: infrastructure tests
+        // Helper: a car in the given dealership
+        public static Car MakeCar(CarDealerShipSystem system, string license, double price, string dealType, CarDealership dealership)
+        {
+            return new Car(system.GetNextCarId(), "Sedan", "Toyota", "Corolla", 2024, 1000, license, price, dealType, "Haifa", dealership);
+        }
+
+        // VFDN-133: classes and system skeleton (design chapters 6 and 12)
         private static void RunInfrastructureTests()
         {
             Console.WriteLine("--- Infrastructure (VFDN-133) ---");
 
-            CarSystem system = new CarSystem();
-            Check(system.GetUserCount() == 0 && system.GetCarCount() == 0, "new system starts empty");
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            Check(system.GetUserCount() == 0 && system.GetCarCount() == 0 && system.GetOrderCount() == 0,
+                  "constructor creates no users, cars or orders");
             Check(system.GetCurrentUser() == null, "no user is logged in at start");
 
-            system.LoadSampleData();
-            Check(system.GetDealershipCount() == 2, "sample dealerships loaded");
-            Check(system.FindUser("manager1") != null, "find user by username");
-            Check(system.FindUser("nobody") == null, "unknown user returns null");
+            CarDealership haifa = system.FindDealershipById(1);
+            Check(haifa != null && haifa.GetName() == "Toyota Haifa" && haifa.GetDealershipType() == "Cars", "seed dealership 1");
+            Check(system.FindDealershipById(5) != null && system.FindDealershipById(5).GetDealershipType() == "Motorcycles", "seed dealership 5 is motorcycles");
+            Check(system.FindDealershipById(6) == null, "exactly 5 seed dealerships");
+            Check(!haifa.HasOwner(), "seed dealerships start without a manager");
 
-            User manager = system.FindUser("manager1");
-            Check(manager.CheckPassword("Manager123"), "CheckPassword accepts the right password");
-            Check(!manager.CheckPassword("manager123"), "CheckPassword is case sensitive");
+            Car car = MakeCar(system, "1234567", 100000, "Both", haifa);
+            Check(car.IsAvailable(), "new car is Available");
+            Check(car.SupportsDealType("Sale") && car.SupportsDealType("Rental"), "Both supports Sale and Rental");
+            Check(!car.MarkAsSold() && car.IsAvailable(), "Available cannot go straight to Sold");
+            Check(car.MarkAsReserved() && car.GetStatus() == "Reserved", "Available -> Reserved");
+            Check(car.MarkAsSold() && car.GetStatus() == "Sold", "Reserved -> Sold");
+            Check(!car.MakeAvailable() && car.GetStatus() == "Sold", "T-25 MakeAvailable on a Sold car fails");
+            Check(!car.SetPrice(0) && !car.SetPrice(-5) && car.GetPrice() == 100000, "T-09 price <= 0 is rejected");
 
-            Car car = system.FindCar("1111111");
-            Check(car != null && car.GetStatus() == "Available", "new car starts as Available");
-            Check(!car.SetStatus("Broken"), "car rejects an invalid status");
-            Check(car.SetStatus("Reserved") && car.GetStatus() == "Reserved", "car accepts a valid status");
-
-            Order order = new Order(1, "manager1", 1, "Purchase");
-            Check(order.GetStatus() == "Pending", "new order starts as Pending");
-            order.AddCar(system.FindCar("1111111"));
-            order.AddCar(system.FindCar("2222222"));
-            Check(order.GetTotalPrice() == 255000, "order total price");
-            Check(system.GetOrderCustomer(order) == manager, "order -> customer relation");
-            Check(system.GetOrderDealership(order).GetName() == "Netanya Cars", "order -> dealership relation");
-            Check(system.CountCarsInDealership(1) == 3, "count cars in dealership");
+            User customer = new User(1, "dana", "Dana_123", "0521234567", "dana@mail.com", "Customer");
+            Order order = new Order(1, customer, "Sale");
+            Check(order.IsPending() && order.GetDealership() == null, "new order is Pending with no cars");
+            order.AddCar(MakeCar(system, "1111111", 100000, "Sale", haifa));
+            order.AddCar(MakeCar(system, "2222222", 50000, "Sale", haifa));
+            order.AddCar(MakeCar(system, "3333333", 25000, "Sale", haifa));
+            Check(!order.AddCar(MakeCar(system, "4444444", 1, "Sale", haifa)), "an order holds at most 3 cars");
+            Check(order.GetTotalPrice() == 175000, "order total price");
+            Check(order.GetDealership() == haifa && order.BelongsTo(customer), "order -> dealership and customer");
+            Check(order.Approve() && !order.Cancel() && order.GetStatus() == "Approved", "Approved is final");
         }
 
-        // VFDN-160: REQ-001 registration tests
+        // VFDN-93: REQ-001 registration (design 7.1)
         private static void RunRegisterTests()
         {
             Console.WriteLine("--- REQ-001 Register (VFDN-93) ---");
 
-            CarSystem system = new CarSystem();
-            system.LoadSampleData();
-            int before = system.GetUserCount();
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            Check(system.IsStrongPassword("Dana_123"), "password with a digit and _ is strong");
+            Check(!system.IsStrongPassword("Dana1234"), "password without a special character is weak");
+            Check(!system.IsStrongPassword("Dana$abc"), "password without a digit is weak");
+            Check(!system.IsStrongPassword("Da_1"), "short password is weak");
+            Check(system.IsValidEmail("dana@mail.com") && !system.IsValidEmail("dana.mail.com") && !system.IsValidEmail("dana@mail"),
+                  "email needs @ and a dot after it");
+            Check(system.IsValidPhone("0521234567") && !system.IsValidPhone("0421234567") && !system.IsValidPhone("05212"),
+                  "phone: 10 digits starting with 05");
 
-            Check(system.RegisterUser("dana", "Dana1234", "dana@mail.com", "0521234567", 1, "Customer") == "",
-                  "valid registration succeeds");
-            Check(system.GetUserCount() == before + 1, "user was added to the array");
-            User dana = system.FindUser("dana");
-            Check(dana != null && dana.GetDealershipId() == 1, "user is linked to the chosen dealership");
-            Check(dana.GetAgencyUserId() == 2, "agency user id is the next number in the dealership");
+            Check(system.TryCreateUser("dana", "Dana_123", "dana@mail.com", "0521234567", "Customer", null), "customer registers");
+            User dana = system.FindUserByUsername("dana");
+            Check(dana != null && dana.IsCustomer() && dana.GetDealership() == null, "customer has no dealership");
+            Check(dana.GetId() == 1, "first user gets id 1");
 
             int count = system.GetUserCount();
-            Check(system.RegisterUser("a1", "dana1234", "a1@mail.com", "0521111111", 1, "Customer") != "", "no uppercase letter is rejected");
-            Check(system.RegisterUser("a2", "Dana12", "a2@mail.com", "0521111111", 1, "Customer") != "", "short password is rejected");
-            Check(system.RegisterUser("a3", "Danaaaaa", "a3@mail.com", "0521111111", 1, "Customer") != "", "password without a digit is rejected");
-            Check(system.RegisterUser("a4", "Dana1234", "a4mail.com", "0521111111", 1, "Customer") != "", "email without @ is rejected");
-            Check(system.RegisterUser("a5", "Dana1234", "a5@mail", "0521111111", 1, "Customer") != "", "email without a dot is rejected");
-            Check(system.RegisterUser("a6", "Dana1234", "a6@mail.com", "052111", 1, "Customer") != "", "short phone is rejected");
-            Check(system.RegisterUser("a7", "Dana1234", "a7@mail.com", "0421111111", 1, "Customer") != "", "phone not starting with 05 is rejected");
-            Check(system.RegisterUser("dana", "Dana1234", "other@mail.com", "0521111111", 1, "Customer") != "", "duplicate username is rejected");
-            Check(system.RegisterUser("a8", "Dana1234", "DANA@mail.com", "0521111111", 1, "Customer") != "", "duplicate email is rejected (any case)");
-            Check(system.RegisterUser("a9", "Dana1234", "a9@mail.com", "0521111111", 99, "Customer") != "", "unknown dealership is rejected");
-            Check(system.RegisterUser("a10", "Dana1234", "a10@mail.com", "0521111111", 1, "Pilot") != "", "unknown user type is rejected");
-            Check(system.RegisterUser("a11", "Dana1234", "a11@mail.com", "0521111111", 1, "Salesperson") != "", "salesperson cannot self-register");
-            Check(system.GetUserCount() == count, "failed registrations did not change the data");
+            Check(!system.TryCreateUser("dana", "Dana_123", "other@mail.com", "0521234567", "Customer", null) && system.GetUserCount() == count,
+                  "T-01 taken username is rejected");
+            Check(!system.TryCreateUser("a1", "weak", "a1@mail.com", "0521234567", "Customer", null)
+                  && !system.TryCreateUser("a2", "Dana_123", "bad-email", "0521234567", "Customer", null)
+                  && !system.TryCreateUser("a3", "Dana_123", "a3@mail.com", "123", "Customer", null)
+                  && system.GetUserCount() == count,
+                  "T-02 weak password / bad email / bad phone create no user");
+            Check(!system.TryCreateUser("a4", "Dana_123", "a4@mail.com", "0521234567", "Salesperson", system.FindDealershipById(1)),
+                  "salesperson cannot self-register");
 
-            CarSystem full = new CarSystem();
-            full.LoadSampleData();
-            int i = 0;
-            while (full.HasUserCapacity())
+            CarDealership haifa = system.FindDealershipById(1);
+            Check(system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", haifa), "manager registers to a free dealership");
+            User boss = system.FindUserByUsername("boss");
+            Check(boss.IsManager() && boss.GetDealership() == haifa && haifa.IsOwner(boss), "manager and dealership are linked both ways");
+            Check(!system.TryCreateUser("boss2", "Boss_123", "boss2@cars.com", "0502222222", "Manager", haifa), "dealership that has a manager is rejected");
+
+            for (int i = 2; i <= 5; i++)
             {
-                full.AddUserToArray(new User("u" + i, "Pass1234", "u" + i + "@m.com", "0500000000", 1, "Customer", 0));
-                i++;
+                system.TryCreateUser("m" + i, "Boss_123", "m" + i + "@cars.com", "0500000000", "Manager", system.FindDealershipById(i));
             }
-            Check(full.RegisterUser("last", "Dana1234", "last@mail.com", "0521111111", 1, "Customer") != "", "registration fails when the array is full");
+            count = system.GetUserCount();
+            Check(!system.TryCreateUser("m6", "Boss_123", "m6@cars.com", "0500000000", "Manager", system.FindDealershipById(1))
+                  && system.GetUserCount() == count,
+                  "T-03 manager registration when all 5 dealerships are taken creates no user");
+
+            CarDealerShipSystem full = new CarDealerShipSystem();
+            for (int i = 0; i < CarDealerShipSystem.USERS_MAX; i++)
+            {
+                full.TryCreateUser("u" + i, "Pass_123", "u" + i + "@m.com", "0500000000", "Customer", null);
+            }
+            Check(!full.HasFreeUserSlot() && !full.TryCreateUser("last", "Pass_123", "last@m.com", "0500000000", "Customer", null),
+                  "registration fails when the users array is full");
         }
     }
 }

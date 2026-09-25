@@ -1,34 +1,48 @@
 namespace CarsApp
 {
-    // VFDN-90: a car in a dealership's inventory
+    // Design 6.3: a single vehicle in a dealership's inventory.
+    // The status changes only through the four transition methods - there is no public SetStatus.
     public class Car
     {
-        // VFDN-112: car fields
-        private string licenseNumber;
+        private int id;
+        private string category;
         private string manufacturer;
         private string model;
+        private int year;
+        private int mileage;
+        private string licenseNumber;
         private double price;
-        private string status;          // Available, Reserved, Sold, Rented
-        private string transactionType; // Sale, Rent, Both
-        private int dealershipId;
+        private string dealType; // Sale / Rental / Both
+        private string location;
+        private string status;   // Available / Reserved / Sold / Rented
+        private CarDealership dealership;
 
-        // VFDN-113: constructor - every new car starts as Available
-        public Car(string licenseNumber, string manufacturer, string model, double price,
-                   string transactionType, int dealershipId)
+        // Always created as Available
+        public Car(int id, string category, string manufacturer, string model, int year, int mileage,
+                   string licenseNumber, double price, string dealType, string location, CarDealership dealership)
         {
-            this.licenseNumber = licenseNumber;
+            this.id = id;
+            this.category = category;
             this.manufacturer = manufacturer;
             this.model = model;
+            this.year = year;
+            this.mileage = mileage;
+            this.licenseNumber = licenseNumber;
             this.price = price;
-            this.transactionType = transactionType;
-            this.dealershipId = dealershipId;
-            this.status = "Available";
+            this.dealType = dealType;
+            this.location = location;
+            this.dealership = dealership;
+            this.status = CarDealerShipSystem.STATUS_AVAILABLE;
         }
 
-        // VFDN-114: Get methods
-        public string GetLicenseNumber()
+        public int GetId()
         {
-            return licenseNumber;
+            return id;
+        }
+
+        public string GetCategory()
+        {
+            return category;
         }
 
         public string GetManufacturer()
@@ -41,9 +55,34 @@ namespace CarsApp
             return model;
         }
 
+        public int GetYear()
+        {
+            return year;
+        }
+
+        public int GetMileage()
+        {
+            return mileage;
+        }
+
+        public string GetLicenseNumber()
+        {
+            return licenseNumber;
+        }
+
         public double GetPrice()
         {
             return price;
+        }
+
+        public string GetDealType()
+        {
+            return dealType;
+        }
+
+        public string GetLocation()
+        {
+            return location;
         }
 
         public string GetStatus()
@@ -51,52 +90,145 @@ namespace CarsApp
             return status;
         }
 
-        public string GetTransactionType()
+        public CarDealership GetDealership()
         {
-            return transactionType;
+            return dealership;
         }
 
-        public int GetDealershipId()
-        {
-            return dealershipId;
-        }
+        // ===== Setters with validation (return false and keep the old value when invalid) =====
 
-        // VFDN-114: Set methods
-        public void SetManufacturer(string manufacturer)
+        public bool SetManufacturer(string manufacturer)
         {
-            this.manufacturer = manufacturer;
-        }
-
-        public void SetModel(string model)
-        {
-            this.model = model;
-        }
-
-        public void SetPrice(double price)
-        {
-            this.price = price;
-        }
-
-        public void SetTransactionType(string transactionType)
-        {
-            this.transactionType = transactionType;
-        }
-
-        // VFDN-114: status update - accepts only the four allowed values
-        public bool SetStatus(string newStatus)
-        {
-            if (newStatus == "Available" || newStatus == "Reserved" ||
-                newStatus == "Sold" || newStatus == "Rented")
+            if (CarDealerShipSystem.IsBlank(manufacturer))
             {
-                status = newStatus;
-                return true;
+                return false;
             }
-            return false;
+            this.manufacturer = manufacturer;
+            return true;
         }
 
+        public bool SetModel(string model)
+        {
+            if (CarDealerShipSystem.IsBlank(model))
+            {
+                return false;
+            }
+            this.model = model;
+            return true;
+        }
+
+        public bool SetYear(int year)
+        {
+            if (!CarDealerShipSystem.IsValidYear(year))
+            {
+                return false;
+            }
+            this.year = year;
+            return true;
+        }
+
+        public bool SetMileage(int mileage)
+        {
+            if (mileage < 0)
+            {
+                return false;
+            }
+            this.mileage = mileage;
+            return true;
+        }
+
+        public bool SetCategory(string category)
+        {
+            if (CarDealerShipSystem.IsBlank(category))
+            {
+                return false;
+            }
+            this.category = category;
+            return true;
+        }
+
+        public bool SetLocation(string location)
+        {
+            if (CarDealerShipSystem.IsBlank(location))
+            {
+                return false;
+            }
+            this.location = location;
+            return true;
+        }
+
+        public bool SetPrice(double price)
+        {
+            if (price <= 0)
+            {
+                return false;
+            }
+            this.price = price;
+            return true;
+        }
+
+        public bool IsAvailable()
+        {
+            return status == CarDealerShipSystem.STATUS_AVAILABLE;
+        }
+
+        // A car with dealType Both supports both Sale and Rental
+        public bool SupportsDealType(string type)
+        {
+            return dealType == type || dealType == CarDealerShipSystem.DEAL_BOTH;
+        }
+
+        // ===== Status transitions (each one checks the source status) =====
+
+        // Available -> Reserved
+        public bool MarkAsReserved()
+        {
+            if (status != CarDealerShipSystem.STATUS_AVAILABLE)
+            {
+                return false;
+            }
+            status = CarDealerShipSystem.STATUS_RESERVED;
+            return true;
+        }
+
+        // Reserved -> Sold
+        public bool MarkAsSold()
+        {
+            if (status != CarDealerShipSystem.STATUS_RESERVED)
+            {
+                return false;
+            }
+            status = CarDealerShipSystem.STATUS_SOLD;
+            return true;
+        }
+
+        // Reserved -> Rented
+        public bool MarkAsRented()
+        {
+            if (status != CarDealerShipSystem.STATUS_RESERVED)
+            {
+                return false;
+            }
+            status = CarDealerShipSystem.STATUS_RENTED;
+            return true;
+        }
+
+        // Reserved -> Available. Sold and Rented are final.
+        public bool MakeAvailable()
+        {
+            if (status != CarDealerShipSystem.STATUS_RESERVED)
+            {
+                return false;
+            }
+            status = CarDealerShipSystem.STATUS_AVAILABLE;
+            return true;
+        }
+
+        // "Car #14 | SUV | Toyota Corolla (2024) | 12000 KM | 145000 NIS | Sale | Haifa | Available"
         public override string ToString()
         {
-            return licenseNumber + " | " + manufacturer + " " + model + " | " + price + " | " + status + " | " + transactionType;
+            return "Car #" + id + " | " + category + " | " + manufacturer + " " + model + " (" + year + ") | "
+                   + mileage + " KM | " + price + " NIS | " + dealType + " | " + location + " | " + status;
         }
     }
 }
