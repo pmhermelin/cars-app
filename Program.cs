@@ -52,7 +52,12 @@ namespace CarsApp
                 }
                 else if (choice == 2)
                 {
-                    NotReady("REQ-002");
+                    User user = system.Login();
+                    if (user != null)
+                    {
+                        Console.WriteLine("✓ ברוך הבא, " + user.GetUsername());
+                        OpenUserMenu(user);
+                    }
                 }
                 else if (choice == 3)
                 {
@@ -64,6 +69,23 @@ namespace CarsApp
                 }
             }
             Console.WriteLine("להתראות!");
+        }
+
+        // Design 9.0: after login each role goes to its own menu
+        private static void OpenUserMenu(User user)
+        {
+            if (user.IsManager())
+            {
+                RunManagerMenu(user);
+            }
+            else if (user.IsSalesperson())
+            {
+                RunSalespersonMenu(user);
+            }
+            else if (user.IsCustomer())
+            {
+                RunCustomerMenu(user);
+            }
         }
 
         // Design 9.2: dealership manager menu
