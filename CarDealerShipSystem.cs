@@ -464,5 +464,121 @@ namespace CarsApp
             }
             return count;
         }
+        
+    // ===== REQ-003: add and update cars (design 7.3-7.4) =====
+
+    // REQ-003 (7.3): adds a new car to the dealership of the current user (manager or salesperson).
+    public bool AddNewCar(User user)
+    {
+        if ((user.GetRole() != ROLE_MANAGER && user.GetRole() != ROLE_SALESPERSON) || user.GetDealership() == null)
+        {
+            Console.WriteLine("✗ אין לך הרשאה להוסיף רכב");
+            return false;
+        }
+
+        int index = FindFreeCarIndex();
+        if (index == -1)
+        {
+            Console.WriteLine("✗ אין מקום להוספת רכבים נוספים במערכת");
+            return false;
+        }
+
+        if (CountDealershipCars(user.GetDealership()) >= DEALERSHIP_CARS_LIMIT)
+        {
+            Console.WriteLine("✗ הסוכנות הגיעה למגבלת " + DEALERSHIP_CARS_LIMIT + " הרכבים");
+            return false;
+        }
+
+        string category = Input.ReadText("קטגוריה: ");
+        string manufacturer = Input.ReadText("יצרן: ");
+        string model = Input.ReadText("דגם: ");
+
+        int year = Input.ReadInt("שנת ייצור: ");
+        while (!IsValidYear(year))
+        {
+            Console.WriteLine("✗ שנה לא תקינה");
+            year = Input.ReadInt("שנת ייצור: ");
+        }
+
+        int mileage = Input.ReadInt("קילומטראז': ");
+        string licenseNumber = Input.ReadText("מספר רישוי: ");
+
+        if (FindCarByLicenseNumber(licenseNumber) != null)
+        {
+            Console.WriteLine("✗ מספר הרישוי כבר קיים במערכת");
+            return false;
+        }
+
+        double price = Input.ReadDouble("מחיר: ");
+        Console.WriteLine("סוג עסקה: 1. " + DEAL_SALE + "  2. " + DEAL_RENTAL + "  3. " + DEAL_BOTH);
+        int typeChoice = Input.ReadInt("בחר: ");
+        string dealType = "";
+        if (typeChoice == 1) dealType = DEAL_SALE;
+        else if (typeChoice == 2) dealType = DEAL_RENTAL;
+        else if (typeChoice == 3) dealType = DEAL_BOTH;
+
+        string location = Input.ReadText("מיקום: ");
+
+        Car car = new Car(GetNextCarId(), category, manufacturer, model, year, mileage,
+                           licenseNumber, price, dealType, location, user.GetDealership());
+        cars[index] = car;
+        carCount++;
+
+        Console.WriteLine("✓ הרכב נוסף בהצלחה");
+        return true;
+    }
+
+    // REQ-003 (7.4): updates an existing car (not price - that's REQ-007).
+    public bool UpdateCar(User user)
+    {
+        if ((user.GetRole() != ROLE_MANAGER && user.GetRole() != ROLE_SALESPERSON) || user.GetDealership() == null)
+        {
+            Console.WriteLine("✗ אין לך הרשאה לעדכן רכב");
+            return false;
+        }
+
+        string licenseNumber = Input.ReadText("מספר רישוי של הרכב לעדכון (0 לביטול): ");
+        if (Input.IsCancel(licenseNumber))
+        {
+            return false;
+        }
+
+        Car car = FindCarByLicenseNumber(licenseNumber);
+        if (car == null)
+        {
+            Console.WriteLine("✗ רכב לא נמצא");
+            return false;
+        }
+        if (car.GetDealership() != user.GetDealership())
+        {
+            Console.WriteLine("✗ הרכב אינו שייך לסוכנות שלך");
+            return false;
+        }
+
+        Console.WriteLine("מה לעדכן? 1-יצרן 2-דגם 3-שנה 4-ק\"מ 5-קטגוריה 6-מיקום");
+        int choice = Input.ReadInt("בחר: ");
+        bool ok = false;
+
+        if (choice == 1) ok = car.SetManufacturer(Input.ReadText("יצרן חדש: "));
+        else if (choice == 2) ok = car.SetModel(Input.ReadText("דגם חדש: "));
+        else if (choice == 3) ok = car.SetYear(Input.ReadInt("שנה חדשה: "));
+        else if (choice == 4) ok = car.SetMileage(Input.ReadInt("ק\"מ חדש: "));
+        else if (choice == 5) ok = car.SetCategory(Input.ReadText("קטגוריה חדשה: "));
+        else if (choice == 6) ok = car.SetLocation(Input.ReadText("מיקום חדש: "));
+        else
+        {
+            Console.WriteLine("✗ בחירה לא חוקית");
+            return false;
+        }
+
+        if (!ok)
+        {
+            Console.WriteLine("✗ העדכון נכשל — הערך שהוזן אינו תקין");
+            return false;
+        }
+
+        Console.WriteLine("✓ הרכב עודכן בהצלחה");
+        return true;
+    }
     }
 }
