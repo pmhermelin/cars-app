@@ -464,5 +464,36 @@ namespace CarsApp
             }
             return count;
         }
+        
+    // ===== REQ-010: view available cars (design 7.13) =====
+
+    public void PrintAvailableCars()
+    {
+        int totalShown = 0;
+        for (int d = 0; d < dealershipCount; d++)
+        {
+            CarDealership dealership = dealerships[d];
+            bool headerPrinted = false;
+
+            for (int i = 0; i < carCount; i++)
+            {
+                Car car = cars[i];
+                if (car.GetDealership() != dealership || !car.IsAvailable()) continue;
+
+                if (!headerPrinted)
+                {
+                    Console.WriteLine("--- " + dealership.GetName() + " (" + dealership.GetDealershipType() + ") ---");
+                    headerPrinted = true;
+                }
+                Console.WriteLine(car.ToString());
+                totalShown++;
+            }
+        }
+
+        if (totalShown == 0)
+        {
+            Console.WriteLine("אין רכבים זמינים במערכת!");
+        }
+    }
     }
 }
