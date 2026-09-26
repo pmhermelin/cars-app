@@ -93,7 +93,7 @@ namespace CarsApp
                 }
                 else if (choice == 3)
                 {
-                    NotReady("REQ-007");
+                    system.ChangeCarPrice(user);
                 }
                 else if (choice == 4)
                 {
