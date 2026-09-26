@@ -464,5 +464,30 @@ namespace CarsApp
             }
             return count;
         }
+        
+    // ===== REQ-013: dealership inventory for salesperson (design 7.15) =====
+
+    public void PrintDealershipInventory(User user)
+    {
+        if (user.GetRole() != ROLE_SALESPERSON || user.GetDealership() == null)
+        {
+            Console.WriteLine("✗ פעולה זו זמינה רק לאיש מכירות עם סוכנות משויכת");
+            return;
+        }
+
+        bool found = false;
+        for (int i = 0; i < carCount; i++)
+        {
+            Car car = cars[i];
+            if (car.GetDealership() != user.GetDealership()) continue;
+            Console.WriteLine(car.ToString());
+            found = true;
+        }
+
+        if (!found)
+        {
+            Console.WriteLine("אין רכבים במלאי הסוכנות!");
+        }
+    }
     }
 }
