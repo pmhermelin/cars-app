@@ -191,7 +191,31 @@ namespace CarsApp
                 }
                 else if (choice == 2)
                 {
-                    NotReady("REQ-009");
+                    string category = Input.ReadText("קטגוריה (Enter לדילוג): ");
+                    string manufacturer = Input.ReadText("יצרן (Enter לדילוג): ");
+                    double minPrice = Input.ReadDouble("מחיר מינימלי (0 לדילוג): ");
+                    double maxPrice = Input.ReadDouble("מחיר מקסימלי (0 לדילוג): ");
+                    int minYear = Input.ReadInt("שנה מינימלית (0 לדילוג): ");
+                    Console.WriteLine("סוג עסקה: 1. " + CarDealerShipSystem.DEAL_SALE + "  2. " + CarDealerShipSystem.DEAL_RENTAL + "  3. " + CarDealerShipSystem.DEAL_BOTH + "  0. דילוג");
+                    int typeChoice = Input.ReadInt("בחר: ");
+                    string dealType = "";
+                    if (typeChoice == 1) dealType = CarDealerShipSystem.DEAL_SALE;
+                    else if (typeChoice == 2) dealType = CarDealerShipSystem.DEAL_RENTAL;
+                    else if (typeChoice == 3) dealType = CarDealerShipSystem.DEAL_BOTH;
+
+                    Car[] results = new Car[system.GetCarCount()];
+                    int found = system.SearchCars(category, manufacturer, minPrice, maxPrice, minYear, dealType, results);
+                if (found == 0)
+                {
+                    Console.WriteLine("לא נמצאו רכבים התואמים לחיפוש!");
+                }
+                else
+                {
+                    for (int i = 0; i < found; i++)
+                        {
+                            Console.WriteLine(results[i].ToString());
+                        }
+                }
                 }
                 else if (choice == 3)
                 {
