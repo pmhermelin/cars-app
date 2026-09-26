@@ -464,5 +464,44 @@ namespace CarsApp
             }
             return count;
         }
+        
+    // ===== REQ-007: change car price (design 7.10) =====
+
+    public bool ChangeCarPrice(User manager)
+    {
+        if (manager.GetRole() != ROLE_MANAGER)
+        {
+            Console.WriteLine("✗ רק מנהל סוכנות רשאי לשנות מחיר");
+            return false;
+        }
+
+        int carId = Input.ReadInt("מזהה רכב: ");
+        Car car = FindCarById(carId);
+        if (car == null)
+        {
+            Console.WriteLine("✗ רכב לא נמצא");
+            return false;
+        }
+        if (car.GetDealership() != manager.GetDealership())
+        {
+            Console.WriteLine("✗ הרכב אינו שייך לסוכנות שלך");
+            return false;
+        }
+        if (!car.IsAvailable())
+        {
+            Console.WriteLine("✗ ניתן לשנות מחיר רק לרכב בסטטוס " + STATUS_AVAILABLE + " (סטטוס נוכחי: " + car.GetStatus() + ")");
+            return false;
+        }
+
+        double newPrice = Input.ReadDouble("מחיר חדש: ");
+        if (!car.SetPrice(newPrice))
+        {
+            Console.WriteLine("✗ המחיר חייב להיות גדול מאפס");
+            return false;
+        }
+
+        Console.WriteLine("✓ המחיר עודכן בהצלחה");
+        return true;
+    }
     }
 }
