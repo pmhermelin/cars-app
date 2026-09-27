@@ -1045,7 +1045,9 @@ namespace CarsApp
                     Car car = order.GetCar(j);
                     if (IsClosedDealCar(car, dealership))
                     {
-                        Console.WriteLine(car.ToString());
+                        // Design 7.11 step 4: car details, customer, deal type and date
+                        Console.WriteLine(car.ToString() + " | " + order.GetCustomer().GetUsername()
+                                          + " | " + order.GetOrderType() + " | " + order.GetOrderDate().ToString("dd/MM/yyyy"));
                         printed++;
                     }
                 }
