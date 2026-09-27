@@ -950,5 +950,47 @@ namespace CarsApp
             }
             return TryApproveOrder(manager, order.GetOrderNumber());
         }
+
+        // REQ-005 reject without keyboard input (used by the tests).
+        // The order moves to Rejected first; only then its cars are released to Available.
+        public bool TryRejectOrder(User manager, int orderNumber)
+        {
+            Order order = FindOrderOfManager(manager, orderNumber);
+            if (order == null || !order.Reject())
+            {
+                return false;
+            }
+            for (int i = 0; i < order.GetCarCount(); i++)
+            {
+                order.GetCar(i).MakeAvailable();
+            }
+            return true;
+        }
+
+        // REQ-005 reject interactive (design 7.8): manager menu 4
+        public bool RejectOrder(User manager)
+        {
+            if (!IsManagerWithDealership(manager))
+            {
+                Console.WriteLine("✗ רק מנהל סוכנות יכול לדחות עסקאות");
+                return false;
+            }
+            if (PrintPendingOrdersOfDealership(manager) == 0)
+            {
+                Console.WriteLine("✗ אין הזמנות ממתינות בסוכנות שלך");
+                return false;
+            }
+            Order order = ReadOrderOfManager(manager);
+            if (order == null)
+            {
+                return false;
+            }
+            if (!order.IsPending())
+            {
+                Console.WriteLine("✗ ההזמנה אינה ממתינה לאישור");
+                return false;
+            }
+            return TryRejectOrder(manager, order.GetOrderNumber());
+        }
     }
 }
