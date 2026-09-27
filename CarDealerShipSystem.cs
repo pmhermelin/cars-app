@@ -1057,5 +1057,70 @@ namespace CarsApp
                 Console.WriteLine("אין רכבים שנמכרו או הושכרו!");
             }
         }
+
+        // ===== REQ-012: My orders (design 7.14) - Yehuda =====
+
+        // Design 8: bubble sort from the newest order to the oldest.
+        // Equal dates: the higher order number is the newer one.
+        public static void SortOrdersByDate(Order[] list, int count)
+        {
+            for (int i = 0; i < count - 1; i++)
+            {
+                for (int j = 0; j < count - 1 - i; j++)
+                {
+                    bool older = list[j].GetOrderDate() < list[j + 1].GetOrderDate();
+                    bool sameDateLowerNumber = list[j].GetOrderDate() == list[j + 1].GetOrderDate()
+                                               && list[j].GetOrderNumber() < list[j + 1].GetOrderNumber();
+                    if (older || sameDateLowerNumber)
+                    {
+                        Order temp = list[j];
+                        list[j] = list[j + 1];
+                        list[j + 1] = temp;
+                    }
+                }
+            }
+        }
+
+        // Fills results (an output array the caller allocates) with the customer's orders, newest first,
+        // and returns how many. The orders array itself is never reordered.
+        public int GetCustomerOrders(User customer, Order[] results)
+        {
+            if (customer == null || !customer.IsCustomer() || results == null)
+            {
+                return 0;
+            }
+            int count = 0;
+            for (int i = 0; i < orderCount && count < results.Length; i++)
+            {
+                if (orders[i].BelongsTo(customer))
+                {
+                    results[count] = orders[i];
+                    count++;
+                }
+            }
+            SortOrdersByDate(results, count);
+            return count;
+        }
+
+        // REQ-012 (design 7.14): customer menu 4
+        public void PrintCustomerOrders(User customer)
+        {
+            if (customer == null || !customer.IsCustomer())
+            {
+                Console.WriteLine("✗ רק לקוח יכול לצפות בהזמנות שלו");
+                return;
+            }
+            Order[] myOrders = new Order[ORDERS_MAX];
+            int count = GetCustomerOrders(customer, myOrders);
+            if (count == 0)
+            {
+                Console.WriteLine("אין לך הזמנות במערכת!");
+                return;
+            }
+            for (int i = 0; i < count; i++)
+            {
+                Console.WriteLine(myOrders[i].ToString());
+            }
+        }
     }
 }
