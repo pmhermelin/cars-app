@@ -1102,6 +1102,17 @@ namespace CarsApp
             return count;
         }
 
+        // The order stored at an index of the orders array. Used by the tests to check that
+        // showing orders never reorders the array (REQ-012).
+        internal Order GetOrderAt(int index)
+        {
+            if (index < 0 || index >= orderCount)
+            {
+                return null;
+            }
+            return orders[index];
+        }
+
         // REQ-012 (design 7.14): customer menu 4
         public void PrintCustomerOrders(User customer)
         {
@@ -1119,7 +1130,7 @@ namespace CarsApp
             }
             for (int i = 0; i < count; i++)
             {
-                Console.WriteLine(myOrders[i].ToString());
+                PrintOrderDetails(myOrders[i]); // number, date, type, status, total and the cars
             }
         }
     }

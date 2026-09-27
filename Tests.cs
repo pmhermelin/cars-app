@@ -34,6 +34,7 @@ namespace CarsApp
             RunCancelOrderTests();
             RunApproveRejectTests();
             RunSoldOrRentedTests();
+            RunCustomerOrdersTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -356,6 +357,48 @@ namespace CarsApp
             Check(system.CountSoldOrRentedCars(haifa) == 2, "the sold car and the rented car of the dealership are counted");
             Check(system.FindCarById(rent2).IsAvailable(), "a rejected order is not counted");
             Check(system.CountSoldOrRentedCars(telAviv) == 1, "each dealership sees only its own cars");
+        }
+
+        // VFDN-106: REQ-012 my orders (design 7.14)
+        private static void RunCustomerOrdersTests()
+        {
+            Console.WriteLine("--- REQ-012 My orders (VFDN-106) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            User dana = MakeCustomer(system, "dana");
+            User noa = MakeCustomer(system, "noa");
+            Order[] results = new Order[CarDealerShipSystem.ORDERS_MAX];
+
+            Check(system.GetCustomerOrders(dana, results) == 0 && results[0] == null, "customer without orders gets 0 and the array is unchanged");
+
+            int rent1 = AddCar(system, "1000001", "Rental", haifa);
+            int rent2 = AddCar(system, "1000002", "Rental", haifa);
+            int rent3 = AddCar(system, "1000003", "Rental", haifa);
+            int sale1 = AddCar(system, "1000004", "Sale", haifa);
+            system.TryConfirmOrder(dana, dana, "Rental", new int[] { rent1 }, 1);
+            system.TryConfirmOrder(noa, noa, "Rental", new int[] { rent2 }, 1);
+            system.TryConfirmOrder(dana, dana, "Rental", new int[] { rent3 }, 1);
+            system.TryConfirmOrder(dana, dana, "Sale", new int[] { sale1 }, 1);
+            system.TryCancelOrder(dana, 3);
+
+            int count = system.GetCustomerOrders(dana, results);
+            Check(count == 3, "the customer sees all his orders, in every status");
+            Check(results[0].GetOrderNumber() == 4 && results[1].GetOrderNumber() == 3 && results[2].GetOrderNumber() == 1,
+                  "orders are sorted from the newest to the oldest");
+            bool onlyMine = true;
+            for (int i = 0; i < count; i++)
+            {
+                if (!results[i].BelongsTo(dana))
+                {
+                    onlyMine = false;
+                }
+            }
+            Check(onlyMine, "orders of another customer are not shown");
+            Check(system.GetOrderAt(0).GetOrderNumber() == 1 && system.GetOrderAt(1).GetOrderNumber() == 2
+                  && system.GetOrderAt(3).GetOrderNumber() == 4,
+                  "showing orders does not reorder the orders array");
+            Check(system.GetCustomerOrders(system.FindUserByUsername("noa"), results) == 1, "each customer sees only his own orders");
         }
     }
 }
