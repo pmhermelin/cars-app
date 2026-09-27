@@ -30,6 +30,7 @@ namespace CarsApp
 
             RunInfrastructureTests();
             RunRegisterTests();
+            RunConfirmOrderTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -131,6 +132,103 @@ namespace CarsApp
             }
             Check(!full.HasFreeUserSlot() && !full.TryCreateUser("last", "Pass_123", "last@m.com", "0500000000", "Customer", null),
                   "registration fails when the users array is full");
+        }
+
+        // Helper: a customer registered in the system
+        public static User MakeCustomer(CarDealerShipSystem system, string username)
+        {
+            system.TryCreateUser(username, "Pass_123", username + "@mail.com", "0521234567", "Customer", null);
+            return system.FindUserByUsername(username);
+        }
+
+        // Helper: a salesperson of the dealership. Built directly because AddSalesperson (REQ-014) is on another branch.
+        public static User MakeSalesperson(string username, CarDealership dealership)
+        {
+            User salesperson = new User(900, username, "Pass_123", "0521234567", username + "@cars.com", "Salesperson");
+            salesperson.SetDealership(dealership);
+            return salesperson;
+        }
+
+        // Helper: a car added to the system inventory; returns its id
+        public static int AddCar(CarDealerShipSystem system, string license, string dealType, CarDealership dealership)
+        {
+            Car car = MakeCar(system, license, 100000, dealType, dealership);
+            system.AddCarToInventory(car);
+            return car.GetId();
+        }
+
+        // VFDN-104: REQ-011 place an order (design 7.5)
+        private static void RunConfirmOrderTests()
+        {
+            Console.WriteLine("--- REQ-011 Confirm order (VFDN-104) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            CarDealership telAviv = system.FindDealershipById(2);
+            User dana = MakeCustomer(system, "dana");
+            int sale1 = AddCar(system, "1000001", "Sale", haifa);
+            int sale2 = AddCar(system, "1000002", "Sale", haifa);
+            int both1 = AddCar(system, "1000003", "Both", haifa);
+            int rent1 = AddCar(system, "1000004", "Rental", haifa);
+            int rent2 = AddCar(system, "1000005", "Rental", haifa);
+            int rent3 = AddCar(system, "1000006", "Rental", haifa);
+            int rentTa = AddCar(system, "2000001", "Rental", telAviv);
+
+            Check(system.TryConfirmOrder(dana, dana, "Sale", new int[] { sale1 }, 1), "customer places a purchase order");
+            Order first = system.FindOrderByNumber(1);
+            Check(first != null && first.IsPending() && first.BelongsTo(dana) && first.GetCarCount() == 1,
+                  "new order is Pending and belongs to the customer");
+            Check(system.FindCarById(sale1).GetStatus() == "Reserved", "ordered car is Reserved, not Sold");
+            Check(system.CountActivePurchaseCars(dana) == 1 && system.GetNextOrderNumber() == 2, "purchase counter and order number");
+
+            User noa = MakeCustomer(system, "noa");
+            int orders = system.GetOrderCount();
+            Check(!system.TryConfirmOrder(noa, noa, "Sale", new int[] { sale1 }, 1) && system.GetOrderCount() == orders,
+                  "T-10 a car that is not Available is not added and no order is created");
+
+            Check(!system.TryConfirmOrder(dana, dana, "Sale", new int[] { sale2 }, 1)
+                  && system.FindCarById(sale2).IsAvailable() && system.GetOrderCount() == orders,
+                  "T-11 a second active purchase is blocked and no car is Reserved");
+
+            Check(!system.TryConfirmOrder(noa, noa, "Sale", new int[] { sale2, both1 }, 2), "a purchase is always one car");
+            Check(!system.TryConfirmOrder(noa, noa, "Lease", new int[] { rent1 }, 1), "unknown order type is rejected");
+            Check(!system.TryConfirmOrder(noa, noa, "Rental", new int[] { sale2 }, 1) && system.FindCarById(sale2).IsAvailable(),
+                  "T-24 a Sale-only car cannot join a rental order");
+
+            Check(system.TryConfirmOrder(noa, noa, "Rental", new int[] { rent1, rentTa }, 2), "T-23 order with cars from two dealerships is created");
+            Order mixed = system.FindOrderByNumber(2);
+            Check(mixed.GetCarCount() == 1 && mixed.GetDealership() == haifa && system.FindCarById(rentTa).IsAvailable(),
+                  "T-23 only the first dealership's car is in the order; the other stays Available");
+
+            Check(system.TryConfirmOrder(noa, noa, "Rental", new int[] { both1 }, 1) && system.CountActiveRentalCars(noa) == 2,
+                  "a Both car can be rented; rental counter counts cars");
+            orders = system.GetOrderCount();
+            Check(!system.TryConfirmOrder(noa, noa, "Rental", new int[] { rent2, rent3 }, 2)
+                  && system.FindCarById(rent2).IsAvailable() && system.GetOrderCount() == orders,
+                  "T-27 2 active rentals + 2 more is blocked before any car is chosen");
+            Check(system.TryConfirmOrder(noa, noa, "Rental", new int[] { rent2 }, 1) && system.CountActiveRentalCars(noa) == 3,
+                  "2 active rentals + 1 more is allowed (exactly 3)");
+            orders = system.GetOrderCount();
+            Check(!system.TryConfirmOrder(noa, noa, "Rental", new int[] { rent3 }, 1) && system.GetOrderCount() == orders,
+                  "T-12 a fourth rented car is blocked");
+
+            User omer = MakeCustomer(system, "omer");
+            Check(!system.TryConfirmOrder(dana, omer, "Rental", new int[] { rent3 }, 1), "a customer cannot order for another customer");
+            Check(!system.TryConfirmOrder(omer, omer, "Rental", new int[] { 999 }, 1), "unknown car id creates no order");
+
+            User seller = MakeSalesperson("seller", telAviv);
+            orders = system.GetOrderCount();
+            Check(!system.TryConfirmOrder(seller, omer, "Rental", new int[] { rent3 }, 1)
+                  && system.FindCarById(rent3).IsAvailable() && system.GetOrderCount() == orders,
+                  "T-28 salesperson cannot order a car of another dealership");
+            Check(system.TryConfirmOrder(seller, omer, "Rental", new int[] { rentTa }, 1)
+                  && system.FindOrderByNumber(5).BelongsTo(omer),
+                  "salesperson orders for a customer from his own dealership");
+            Check(!system.TryConfirmOrder(seller, seller, "Rental", new int[] { rent3 }, 1), "an order is only for a customer");
+
+            system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", haifa);
+            User boss = system.FindUserByUsername("boss");
+            Check(!system.TryConfirmOrder(boss, omer, "Rental", new int[] { rent3 }, 1), "a manager cannot place orders");
         }
     }
 }
