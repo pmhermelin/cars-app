@@ -992,5 +992,68 @@ namespace CarsApp
             }
             return TryRejectOrder(manager, order.GetOrderNumber());
         }
+
+        // ===== REQ-008: Sold or rented cars (design 7.11) - Yehuda =====
+
+        // True when the car belongs to the dealership and was really sold or rented
+        private bool IsClosedDealCar(Car car, CarDealership dealership)
+        {
+            bool closed = car.GetStatus() == STATUS_SOLD || car.GetStatus() == STATUS_RENTED;
+            return closed && car.GetDealership() == dealership;
+        }
+
+        // Number of the dealership's cars in Approved orders that are Sold or Rented (used by the tests)
+        public int CountSoldOrRentedCars(CarDealership dealership)
+        {
+            int count = 0;
+            for (int i = 0; i < orderCount; i++)
+            {
+                if (orders[i].GetStatus() != ORDER_APPROVED)
+                {
+                    continue;
+                }
+                for (int j = 0; j < orders[i].GetCarCount(); j++)
+                {
+                    if (IsClosedDealCar(orders[i].GetCar(j), dealership))
+                    {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+
+        // REQ-008 (design 7.11): salesperson menu 5. Only Approved orders of the salesperson's dealership.
+        public void PrintSoldOrRentedCars(User salesperson)
+        {
+            if (salesperson == null || !salesperson.IsSalesperson() || salesperson.GetDealership() == null)
+            {
+                Console.WriteLine("✗ רק איש מכירות יכול לצפות ברכבים שנמכרו או הושכרו");
+                return;
+            }
+            CarDealership dealership = salesperson.GetDealership();
+            int printed = 0;
+            for (int i = 0; i < orderCount; i++)
+            {
+                Order order = orders[i];
+                if (order.GetStatus() != ORDER_APPROVED)
+                {
+                    continue;
+                }
+                for (int j = 0; j < order.GetCarCount(); j++)
+                {
+                    Car car = order.GetCar(j);
+                    if (IsClosedDealCar(car, dealership))
+                    {
+                        Console.WriteLine(car.ToString());
+                        printed++;
+                    }
+                }
+            }
+            if (printed == 0)
+            {
+                Console.WriteLine("אין רכבים שנמכרו או הושכרו!");
+            }
+        }
     }
 }
