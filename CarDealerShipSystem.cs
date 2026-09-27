@@ -464,5 +464,79 @@ namespace CarsApp
             }
             return count;
         }
+
+        // ===== REQ-011: Orders (design 7.5) - Yehuda =====
+
+        // Design 8: cars in the customer's active (Pending or Approved) purchase orders.
+        // Counts cars, not orders.
+        public int CountActivePurchaseCars(User customer)
+        {
+            return CountActiveCars(customer, DEAL_SALE);
+        }
+
+        // Design 8: cars in the customer's active (Pending or Approved) rental orders
+        public int CountActiveRentalCars(User customer)
+        {
+            return CountActiveCars(customer, DEAL_RENTAL);
+        }
+
+        private int CountActiveCars(User customer, string orderType)
+        {
+            int count = 0;
+            for (int i = 0; i < orderCount; i++)
+            {
+                Order order = orders[i];
+                bool active = order.GetStatus() == ORDER_PENDING || order.GetStatus() == ORDER_APPROVED;
+                if (active && order.BelongsTo(customer) && order.GetOrderType() == orderType)
+                {
+                    count = count + order.GetCarCount();
+                }
+            }
+            return count;
+        }
+
+        // Step 1: who the order is for. A customer orders for himself; a salesperson orders for a customer.
+        // Returns false for any other role.
+        private bool CanOrderFor(User user, User customer)
+        {
+            if (user == null || customer == null || !customer.IsCustomer())
+            {
+                return false;
+            }
+            if (user.IsCustomer())
+            {
+                return user == customer;
+            }
+            return user.IsSalesperson() && user.GetDealership() != null;
+        }
+
+        // Steps 3-4: Sale is always 1 car, Rental is 1 to MAX_CARS_PER_ORDER
+        private bool IsValidOrderCount(string orderType, int count)
+        {
+            if (orderType == DEAL_SALE)
+            {
+                return count == 1;
+            }
+            if (orderType == DEAL_RENTAL)
+            {
+                return count >= 1 && count <= Order.MAX_CARS_PER_ORDER;
+            }
+            return false;
+        }
+
+        // Step 5: the customer limits, checked before any car is chosen.
+        // Returns "" when the order is allowed, otherwise the message to show.
+        private string CheckCustomerLimits(User customer, string orderType, int count)
+        {
+            if (orderType == DEAL_SALE && CountActivePurchaseCars(customer) >= 1)
+            {
+                return "✗ ללקוח כבר יש רכב ברכישה פעילה";
+            }
+            if (orderType == DEAL_RENTAL && count + CountActiveRentalCars(customer) > Order.MAX_CARS_PER_ORDER)
+            {
+                return "✗ חריגה ממגבלת ההשכרה - עד " + Order.MAX_CARS_PER_ORDER + " רכבים בהשכרה פעילה";
+            }
+            return "";
+        }
     }
 }
