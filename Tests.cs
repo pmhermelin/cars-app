@@ -31,6 +31,7 @@ namespace CarsApp
             RunInfrastructureTests();
             RunRegisterTests();
             RunConfirmOrderTests();
+            RunCancelOrderTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -229,6 +230,41 @@ namespace CarsApp
             system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", haifa);
             User boss = system.FindUserByUsername("boss");
             Check(!system.TryConfirmOrder(boss, omer, "Rental", new int[] { rent3 }, 1), "a manager cannot place orders");
+        }
+
+        // VFDN-98: REQ-004 cancel an order (design 7.6)
+        private static void RunCancelOrderTests()
+        {
+            Console.WriteLine("--- REQ-004 Cancel order (VFDN-98) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            User dana = MakeCustomer(system, "dana");
+            User noa = MakeCustomer(system, "noa");
+            int rent1 = AddCar(system, "1000001", "Rental", haifa);
+            int rent2 = AddCar(system, "1000002", "Rental", haifa);
+            int sale1 = AddCar(system, "1000003", "Sale", haifa);
+            system.TryConfirmOrder(dana, dana, "Rental", new int[] { rent1, rent2 }, 2);
+
+            Check(!system.TryCancelOrder(noa, 1) && system.FindOrderByNumber(1).IsPending()
+                  && system.FindCarById(rent1).GetStatus() == "Reserved",
+                  "T-14 a customer cannot cancel another customer's order");
+            Check(!system.TryCancelOrder(dana, 99), "unknown order number is rejected");
+
+            Check(system.TryCancelOrder(dana, 1) && system.FindOrderByNumber(1).GetStatus() == "Cancelled",
+                  "customer cancels a Pending order");
+            Check(system.FindCarById(rent1).IsAvailable() && system.FindCarById(rent2).IsAvailable(),
+                  "all the cars of a cancelled order are Available again");
+            Check(system.CountActiveRentalCars(dana) == 0, "a cancelled order is not active");
+            Check(!system.TryCancelOrder(dana, 1), "a cancelled order cannot be cancelled again");
+
+            system.TryConfirmOrder(dana, dana, "Sale", new int[] { sale1 }, 1);
+            Order approved = system.FindOrderByNumber(2);
+            approved.Approve();
+            system.FindCarById(sale1).MarkAsSold();
+            Check(!system.TryCancelOrder(dana, 2) && approved.GetStatus() == "Approved"
+                  && system.FindCarById(sale1).GetStatus() == "Sold",
+                  "T-13 an Approved order cannot be cancelled and its car stays Sold");
         }
     }
 }
