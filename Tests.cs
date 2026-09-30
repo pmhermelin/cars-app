@@ -30,6 +30,7 @@ namespace CarsApp
 
             RunInfrastructureTests();
             RunRegisterTests();
+            RunDealershipInventoryTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -131,6 +132,38 @@ namespace CarsApp
             }
             Check(!full.HasFreeUserSlot() && !full.TryCreateUser("last", "Pass_123", "last@m.com", "0500000000", "Customer", null),
                   "registration fails when the users array is full");
+        }
+
+        // VFDN-159: REQ-013 dealership inventory for a salesperson (design 7.15)
+        private static void RunDealershipInventoryTests()
+        {
+            Console.WriteLine("--- REQ-013 Dealership inventory (VFDN-159) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            CarDealership telAviv = system.FindDealershipById(2);
+            // Built directly because AddSalesperson (REQ-014) is on another branch
+            User seller = new User(900, "seller", "Pass_123", "0521234567", "seller@cars.com", "Salesperson");
+            seller.SetDealership(haifa);
+            system.TryCreateUser("dana", "Dana_123", "dana@mail.com", "0521234567", "Customer", null);
+            User dana = system.FindUserByUsername("dana");
+
+            Car available = MakeCar(system, "1000001", 100000, "Sale", haifa);
+            Car sold = MakeCar(system, "1000002", 90000, "Sale", haifa);
+            Car other = MakeCar(system, "2000001", 80000, "Sale", telAviv);
+            system.AddCarToInventory(available);
+            system.AddCarToInventory(sold);
+            system.AddCarToInventory(other);
+            sold.MarkAsReserved();
+            sold.MarkAsSold();
+
+            Check(system.CountDealershipCars(haifa) == 2, "the inventory includes cars in every status (Available and Sold)");
+            Check(system.CountDealershipCars(telAviv) == 1, "cars of another dealership are not included");
+
+            system.PrintDealershipInventory(null);
+            system.PrintDealershipInventory(dana);
+            system.PrintDealershipInventory(seller);
+            Check(true, "null user, customer and salesperson all run without an exception");
         }
     }
 }
