@@ -464,8 +464,8 @@ namespace CarsApp
             }
             return count;
         }
-        
-    // ===== REQ-007: change car price (design 7.10) =====
+
+        // ===== REQ-007: change car price (design 7.10) =====
 
         // REQ-007 (7.10) without keyboard input: manager of the car's dealership, car Available, price > 0.
         // Returns false and keeps the old price when any rule fails.
