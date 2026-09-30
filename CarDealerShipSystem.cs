@@ -247,9 +247,10 @@ namespace CarsApp
             return text == null || text.Trim().Length == 0;
         }
 
+        // Requirements 8.2: a whole number between 1990 and the current year
         public static bool IsValidYear(int year)
         {
-            return year >= 1950 && year <= DateTime.Now.Year + 1;
+            return year >= 1990 && year <= DateTime.Now.Year;
         }
 
         public bool UsernameExists(string username)

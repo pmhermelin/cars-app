@@ -46,6 +46,7 @@ namespace CarsApp
             RunSoldOrRentedTests();
             RunCustomerOrdersTests();
             RunDesignRulesTests();
+            RunRequirementsAlignmentTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -745,6 +746,17 @@ namespace CarsApp
             Check(first == -1 && second == 12, "T-21 text in a number field is rejected and the next input is read");
 
             Console.SetIn(keyboard);
+        }
+
+        // Requirements v2.4, section 8.2: year of manufacture between 1990 and the current year
+        private static void RunRequirementsAlignmentTests()
+        {
+            Console.WriteLine("--- Requirements v2.4 alignment ---");
+
+            int thisYear = DateTime.Now.Year;
+            Check(CarDealerShipSystem.IsValidYear(1990) && CarDealerShipSystem.IsValidYear(thisYear), "1990 and the current year are valid");
+            Check(!CarDealerShipSystem.IsValidYear(1989) && !CarDealerShipSystem.IsValidYear(thisYear + 1),
+                  "1989 and next year are rejected");
         }
     }
 }
