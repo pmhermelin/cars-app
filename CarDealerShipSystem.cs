@@ -464,29 +464,38 @@ namespace CarsApp
             }
             return count;
         }
-        
-    // ===== REQ-009: search and filter cars (design 7.12) =====
 
-    public int SearchCars(string category, string manufacturer, double minPrice, double maxPrice,
-                           int minYear, string dealType, Car[] results)
-    {
-        int count = 0;
-        for (int i = 0; i < carCount; i++)
+        // ===== REQ-009: search and filter cars (design 7.12) =====
+
+        // A blank filter matches everything; otherwise compares without case and surrounding spaces
+        private bool TextMatches(string value, string filter)
         {
-            Car car = cars[i];
-            if (!car.IsAvailable()) continue;
-            if (!IsBlank(category) && car.GetCategory() != category) continue;
-            if (!IsBlank(manufacturer) && car.GetManufacturer() != manufacturer) continue;
-            if (minPrice > 0 && car.GetPrice() < minPrice) continue;
-            if (maxPrice > 0 && car.GetPrice() > maxPrice) continue;
-            if (minYear > 0 && car.GetYear() < minYear) continue;
-            if (!IsBlank(dealType) && !car.SupportsDealType(dealType)) continue;
-
-            if (count >= results.Length) break;
-            results[count] = car;
-            count++;
+            if (IsBlank(filter))
+            {
+                return true;
+            }
+            return value != null && value.Trim().ToLower() == filter.Trim().ToLower();
         }
-        return count;
-    }
+
+        public int SearchCars(string category, string manufacturer, double minPrice, double maxPrice,
+                              int minYear, string dealType, Car[] results)
+        {
+            int count = 0;
+            for (int i = 0; i < carCount && count < results.Length; i++)
+            {
+                Car car = cars[i];
+                if (!car.IsAvailable()) continue;
+                if (!TextMatches(car.GetCategory(), category)) continue;
+                if (!TextMatches(car.GetManufacturer(), manufacturer)) continue;
+                if (minPrice > 0 && car.GetPrice() < minPrice) continue;
+                if (maxPrice > 0 && car.GetPrice() > maxPrice) continue;
+                if (minYear > 0 && car.GetYear() < minYear) continue;
+                if (!IsBlank(dealType) && !car.SupportsDealType(dealType)) continue;
+
+                results[count] = car;
+                count++;
+            }
+            return count;
+        }
     }
 }
