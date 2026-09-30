@@ -109,9 +109,13 @@ namespace CarsApp
                     return;
                 }
 
-                if (choice == 1 || choice == 2)
+                if (choice == 1)
                 {
-                    NotReady("REQ-003");
+                    system.AddNewCar(user);
+                }
+                else if (choice == 2)
+                {
+                    system.UpdateCar(user);
                 }
                 else if (choice == 3)
                 {
@@ -172,9 +176,13 @@ namespace CarsApp
                 {
                     NotReady("REQ-013");
                 }
-                else if (choice == 2 || choice == 3)
+                else if (choice == 2)
                 {
-                    NotReady("REQ-003");
+                    system.AddNewCar(user);
+                }
+                else if (choice == 3)
+                {
+                    system.UpdateCar(user);
                 }
                 else if (choice == 4)
                 {
