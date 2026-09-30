@@ -1352,5 +1352,91 @@ namespace CarsApp
             }
             return printed;
         }
+
+        // ===== REQ-004: Cancel order (design 7.6) - Yehuda =====
+
+        // Prints an order the way the requirements show it: the order line, the customer, the total and its cars.
+        // Built here from getters - Order.ToString() prints only its own fields (design 6.7).
+        private void PrintOrderDetails(Order order)
+        {
+            Console.WriteLine(order.ToString() + " | " + order.GetCustomer().GetUsername()
+                              + " | " + order.GetTotalPrice() + " NIS");
+            for (int i = 0; i < order.GetCarCount(); i++)
+            {
+                Console.WriteLine("    " + order.GetCar(i).ToString());
+            }
+        }
+
+        // Prints the customer's Pending orders and returns how many were printed
+        private int PrintPendingOrdersOf(User customer)
+        {
+            int printed = 0;
+            for (int i = 0; i < orderCount; i++)
+            {
+                if (orders[i].BelongsTo(customer) && orders[i].IsPending())
+                {
+                    PrintOrderDetails(orders[i]);
+                    printed++;
+                }
+            }
+            return printed;
+        }
+
+        // REQ-004 without keyboard input (used by the tests).
+        // The cars are released only after order.Cancel() succeeded; false changes nothing.
+        public bool TryCancelOrder(User customer, int orderNumber)
+        {
+            if (customer == null || !customer.IsCustomer())
+            {
+                return false;
+            }
+            Order order = FindOrderByNumber(orderNumber);
+            if (order == null || !order.BelongsTo(customer))
+            {
+                return false;
+            }
+            if (!order.Cancel())
+            {
+                return false;
+            }
+            for (int i = 0; i < order.GetCarCount(); i++)
+            {
+                order.GetCar(i).MakeAvailable();
+            }
+            return true;
+        }
+
+        // REQ-004 interactive (design 7.6): customer menu 5. 0 cancels.
+        public bool CancelOrder(User customer)
+        {
+            if (customer == null || !customer.IsCustomer())
+            {
+                Console.WriteLine("✗ רק לקוח יכול לבטל הזמנה");
+                return false;
+            }
+            if (PrintPendingOrdersOf(customer) == 0)
+            {
+                Console.WriteLine("✗ אין לך הזמנות ממתינות לביטול");
+                return false;
+            }
+
+            int orderNumber = Input.ReadInt("מספר הזמנה לביטול (0 לביטול): ");
+            if (orderNumber == 0)
+            {
+                return false;
+            }
+            Order order = FindOrderByNumber(orderNumber);
+            if (order == null || !order.BelongsTo(customer))
+            {
+                Console.WriteLine("✗ הזמנה לא נמצאה");
+                return false;
+            }
+            if (!order.IsPending())
+            {
+                Console.WriteLine("✗ אפשר לבטל רק הזמנה שממתינה לאישור");
+                return false;
+            }
+            return TryCancelOrder(customer, orderNumber);
+        }
     }
 }

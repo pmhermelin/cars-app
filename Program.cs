@@ -285,7 +285,14 @@ namespace CarsApp
                 }
                 else if (choice == 5)
                 {
-                    NotReady("REQ-004");
+                    if (system.CancelOrder(user))
+                    {
+                        Console.WriteLine("✓ ההזמנה בוטלה והרכבים חזרו למלאי");
+                    }
+                    else
+                    {
+                        Console.WriteLine("✗ ההזמנה לא בוטלה");
+                    }
                 }
                 else if (choice == 6)
                 {
