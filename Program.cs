@@ -332,11 +332,5 @@ namespace CarsApp
                 }
             }
         }
-
-        // Placeholder for menu items whose story is not implemented yet
-        private static void NotReady(string req)
-        {
-            Console.WriteLine("הפעולה עדיין בפיתוח (" + req + ")");
-        }
     }
 }
