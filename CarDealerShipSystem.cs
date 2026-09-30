@@ -464,30 +464,32 @@ namespace CarsApp
             }
             return count;
         }
-        
-    // ===== REQ-013: dealership inventory for salesperson (design 7.15) =====
 
-    public void PrintDealershipInventory(User user)
-    {
-        if (user.GetRole() != ROLE_SALESPERSON || user.GetDealership() == null)
-        {
-            Console.WriteLine("✗ פעולה זו זמינה רק לאיש מכירות עם סוכנות משויכת");
-            return;
-        }
+        // ===== REQ-013: dealership inventory for salesperson (design 7.15) =====
 
-        bool found = false;
-        for (int i = 0; i < carCount; i++)
+        public void PrintDealershipInventory(User user)
         {
-            Car car = cars[i];
-            if (car.GetDealership() != user.GetDealership()) continue;
-            Console.WriteLine(car.ToString());
-            found = true;
-        }
+            if (user == null || !user.IsSalesperson() || user.GetDealership() == null)
+            {
+                Console.WriteLine("✗ פעולה זו זמינה רק לאיש מכירות עם סוכנות משויכת");
+                return;
+            }
 
-        if (!found)
-        {
-            Console.WriteLine("אין רכבים במלאי הסוכנות!");
+            CarDealership dealership = user.GetDealership();
+            if (CountDealershipCars(dealership) == 0)
+            {
+                Console.WriteLine("אין רכבים במלאי הסוכנות!");
+                return;
+            }
+
+            Console.WriteLine("===== מלאי " + dealership.GetName() + " =====");
+            for (int i = 0; i < carCount; i++)
+            {
+                if (cars[i].GetDealership() == dealership)
+                {
+                    Console.WriteLine(cars[i].ToString()); // every status: Available, Reserved, Sold, Rented
+                }
+            }
         }
-    }
     }
 }

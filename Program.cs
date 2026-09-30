@@ -140,7 +140,7 @@ namespace CarsApp
 
                 if (choice == 1)
                 {
-                system.PrintDealershipInventory(user);
+                    system.PrintDealershipInventory(user);
                 }
                 else if (choice == 2 || choice == 3)
                 {
