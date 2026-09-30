@@ -41,6 +41,7 @@ namespace CarsApp
             RunDealershipInventoryTests();
             RunConfirmOrderTests();
             RunCancelOrderTests();
+            RunApproveRejectTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -559,6 +560,57 @@ namespace CarsApp
             Check(!system.TryCancelOrder(dana, 2) && approved.GetStatus() == "Approved"
                   && system.FindCarById(sale1).GetStatus() == "Sold",
                   "T-13 an Approved order cannot be cancelled and its car stays Sold");
+        }
+
+        // VFDN-99: REQ-005 approve or reject an order (design 7.7-7.8)
+        private static void RunApproveRejectTests()
+        {
+            Console.WriteLine("--- REQ-005 Approve / reject (VFDN-99) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            CarDealership telAviv = system.FindDealershipById(2);
+            system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", haifa);
+            system.TryCreateUser("boss2", "Boss_123", "boss2@cars.com", "0502222222", "Manager", telAviv);
+            User boss = system.FindUserByUsername("boss");
+            User otherBoss = system.FindUserByUsername("boss2");
+            User dana = MakeCustomer(system, "dana");
+            User noa = MakeCustomer(system, "noa");
+            int sale1 = AddCar(system, "1000001", "Sale", haifa);
+            int rent1 = AddCar(system, "1000002", "Rental", haifa);
+            int rent2 = AddCar(system, "1000003", "Both", haifa);
+            int rent3 = AddCar(system, "1000004", "Rental", haifa);
+            system.TryConfirmOrder(dana, dana, "Sale", new int[] { sale1 }, 1);
+            system.TryConfirmOrder(noa, noa, "Rental", new int[] { rent1, rent2 }, 2);
+            system.TryConfirmOrder(dana, dana, "Rental", new int[] { rent3 }, 1);
+
+            User seller = MakeSalesperson("seller", haifa);
+            Check(!system.TryApproveOrder(seller, 1) && !system.TryRejectOrder(seller, 1)
+                  && system.FindOrderByNumber(1).IsPending() && system.FindCarById(sale1).GetStatus() == "Reserved",
+                  "T-17 a salesperson cannot approve or reject");
+            Check(!system.TryApproveOrder(dana, 1), "a customer cannot approve");
+            Check(!system.TryApproveOrder(otherBoss, 1) && !system.TryRejectOrder(otherBoss, 1)
+                  && system.FindOrderByNumber(1).IsPending(),
+                  "a manager of another dealership cannot approve or reject");
+            Check(system.PrintPendingOrdersOfDealership(otherBoss) == 0, "orders of another dealership are not shown to a manager");
+            Check(!system.TryApproveOrder(boss, 99), "unknown order number is rejected");
+
+            Check(system.TryApproveOrder(boss, 1) && system.FindOrderByNumber(1).GetStatus() == "Approved"
+                  && system.FindCarById(sale1).GetStatus() == "Sold",
+                  "T-15 approving a purchase: order Approved and its car Sold");
+            Check(system.TryApproveOrder(boss, 2) && system.FindCarById(rent1).GetStatus() == "Rented"
+                  && system.FindCarById(rent2).GetStatus() == "Rented",
+                  "approving a rental: every car in the order is Rented, none stays Reserved");
+            Check(!system.TryApproveOrder(boss, 1) && !system.TryRejectOrder(boss, 1)
+                  && system.FindCarById(sale1).GetStatus() == "Sold",
+                  "an Approved order cannot be approved or rejected again; cars unchanged");
+
+            Check(system.TryRejectOrder(boss, 3) && system.FindOrderByNumber(3).GetStatus() == "Rejected"
+                  && system.FindCarById(rent3).IsAvailable(),
+                  "T-16 rejecting: order Rejected and its car Available again");
+            Check(!system.TryApproveOrder(boss, 3) && system.FindCarById(rent3).IsAvailable(),
+                  "a Rejected order cannot be approved; car stays Available");
+            Check(system.PrintPendingOrdersOfDealership(boss) == 0, "no Pending orders are left");
         }
     }
 }

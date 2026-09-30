@@ -1438,5 +1438,155 @@ namespace CarsApp
             }
             return TryCancelOrder(customer, orderNumber);
         }
+
+        // ===== REQ-005: Approve / reject orders (design 7.7-7.8) - Yehuda =====
+
+        private bool IsManagerWithDealership(User user)
+        {
+            return user != null && user.IsManager() && user.GetDealership() != null;
+        }
+
+        // Steps 1-3 shared by approve and reject: the order exists and belongs to the manager's dealership.
+        // Returns null otherwise.
+        private Order FindOrderOfManager(User manager, int orderNumber)
+        {
+            if (!IsManagerWithDealership(manager))
+            {
+                return null;
+            }
+            Order order = FindOrderByNumber(orderNumber);
+            if (order == null || order.GetDealership() == null || !order.GetDealership().IsOwner(manager))
+            {
+                return null;
+            }
+            return order;
+        }
+
+        // Prints the Pending orders of the manager's dealership and returns how many were printed.
+        // Orders of other dealerships are never shown.
+        public int PrintPendingOrdersOfDealership(User manager)
+        {
+            if (!IsManagerWithDealership(manager))
+            {
+                return 0;
+            }
+            int printed = 0;
+            for (int i = 0; i < orderCount; i++)
+            {
+                if (orders[i].IsPending() && orders[i].GetDealership() == manager.GetDealership())
+                {
+                    PrintOrderDetails(orders[i]);
+                    printed++;
+                }
+            }
+            return printed;
+        }
+
+        // Reads an order number of the manager's dealership. Returns null on 0 or an unknown order.
+        private Order ReadOrderOfManager(User manager)
+        {
+            int orderNumber = Input.ReadInt("מספר הזמנה (0 לביטול): ");
+            if (orderNumber == 0)
+            {
+                return null;
+            }
+            Order order = FindOrderOfManager(manager, orderNumber);
+            if (order == null)
+            {
+                Console.WriteLine("✗ הזמנה לא נמצאה בסוכנות שלך");
+            }
+            return order;
+        }
+
+        // REQ-005 approve without keyboard input (used by the tests).
+        // The order moves to Approved first; only then Sale cars become Sold and Rental cars become Rented.
+        public bool TryApproveOrder(User manager, int orderNumber)
+        {
+            Order order = FindOrderOfManager(manager, orderNumber);
+            if (order == null || !order.Approve())
+            {
+                return false;
+            }
+            for (int i = 0; i < order.GetCarCount(); i++)
+            {
+                if (order.GetOrderType() == DEAL_SALE)
+                {
+                    order.GetCar(i).MarkAsSold();
+                }
+                else
+                {
+                    order.GetCar(i).MarkAsRented();
+                }
+            }
+            return true;
+        }
+
+        // REQ-005 approve interactive (design 7.7): manager menu 4
+        public bool ApproveOrder(User manager)
+        {
+            if (!IsManagerWithDealership(manager))
+            {
+                Console.WriteLine("✗ רק מנהל סוכנות יכול לאשר עסקאות");
+                return false;
+            }
+            if (PrintPendingOrdersOfDealership(manager) == 0)
+            {
+                Console.WriteLine("✗ אין הזמנות ממתינות בסוכנות שלך");
+                return false;
+            }
+            Order order = ReadOrderOfManager(manager);
+            if (order == null)
+            {
+                return false;
+            }
+            if (!order.IsPending())
+            {
+                Console.WriteLine("✗ ההזמנה אינה ממתינה לאישור");
+                return false;
+            }
+            return TryApproveOrder(manager, order.GetOrderNumber());
+        }
+
+        // REQ-005 reject without keyboard input (used by the tests).
+        // The order moves to Rejected first; only then its cars are released to Available.
+        public bool TryRejectOrder(User manager, int orderNumber)
+        {
+            Order order = FindOrderOfManager(manager, orderNumber);
+            if (order == null || !order.Reject())
+            {
+                return false;
+            }
+            for (int i = 0; i < order.GetCarCount(); i++)
+            {
+                order.GetCar(i).MakeAvailable();
+            }
+            return true;
+        }
+
+        // REQ-005 reject interactive (design 7.8): manager menu 4
+        public bool RejectOrder(User manager)
+        {
+            if (!IsManagerWithDealership(manager))
+            {
+                Console.WriteLine("✗ רק מנהל סוכנות יכול לדחות עסקאות");
+                return false;
+            }
+            if (PrintPendingOrdersOfDealership(manager) == 0)
+            {
+                Console.WriteLine("✗ אין הזמנות ממתינות בסוכנות שלך");
+                return false;
+            }
+            Order order = ReadOrderOfManager(manager);
+            if (order == null)
+            {
+                return false;
+            }
+            if (!order.IsPending())
+            {
+                Console.WriteLine("✗ ההזמנה אינה ממתינה לאישור");
+                return false;
+            }
+            return TryRejectOrder(manager, order.GetOrderNumber());
+        }
     }
 }

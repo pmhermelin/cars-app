@@ -123,7 +123,33 @@ namespace CarsApp
                 }
                 else if (choice == 4)
                 {
-                    NotReady("REQ-005");
+                    int action = Input.ReadInt("1. אישור  2. דחייה  (0 לביטול): ");
+                    if (action == 1)
+                    {
+                        if (system.ApproveOrder(user))
+                        {
+                            Console.WriteLine("✓ העסקה אושרה");
+                        }
+                        else
+                        {
+                            Console.WriteLine("✗ העסקה לא אושרה");
+                        }
+                    }
+                    else if (action == 2)
+                    {
+                        if (system.RejectOrder(user))
+                        {
+                            Console.WriteLine("✓ העסקה נדחתה והרכבים חזרו למלאי");
+                        }
+                        else
+                        {
+                            Console.WriteLine("✗ העסקה לא נדחתה");
+                        }
+                    }
+                    else if (action != 0)
+                    {
+                        Console.WriteLine("✗ בחירה לא חוקית");
+                    }
                 }
                 else if (choice == 5)
                 {
