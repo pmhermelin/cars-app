@@ -95,7 +95,7 @@ Program  ──►  CarDealerShipSystem  ──►  User / CarDealership / Car /
 | --- | --- |
 | Confluence — ה-Space של הפרויקט | https://yv0559569296.atlassian.net/wiki/spaces/WEZK4cc1toyL/overview |
 | מסמך העיצוב הטכני | https://yv0559569296.atlassian.net/wiki/x/AgAP |
-| מסמך הדרישות | TODO — להוסיף קישור |
+| מסמך הדרישות | https://yv0559569296.atlassian.net/wiki/spaces/WEZK4cc1toyL/pages/6717442 |
 | Jira — פרויקט VFDN | https://yv0559569296.atlassian.net/jira/core/projects/VFDN |
 
 ## מוסכמות עבודה
