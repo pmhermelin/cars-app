@@ -1060,5 +1060,297 @@ namespace CarsApp
                 }
             }
         }
+
+        // ===== REQ-011: Orders (design 7.5) - Yehuda =====
+
+        // Design 8: cars in the customer's active (Pending or Approved) purchase orders.
+        // Counts cars, not orders.
+        public int CountActivePurchaseCars(User customer)
+        {
+            return CountActiveCars(customer, DEAL_SALE);
+        }
+
+        // Design 8: cars in the customer's active (Pending or Approved) rental orders
+        public int CountActiveRentalCars(User customer)
+        {
+            return CountActiveCars(customer, DEAL_RENTAL);
+        }
+
+        private int CountActiveCars(User customer, string orderType)
+        {
+            int count = 0;
+            for (int i = 0; i < orderCount; i++)
+            {
+                Order order = orders[i];
+                bool active = order.GetStatus() == ORDER_PENDING || order.GetStatus() == ORDER_APPROVED;
+                if (active && order.BelongsTo(customer) && order.GetOrderType() == orderType)
+                {
+                    count = count + order.GetCarCount();
+                }
+            }
+            return count;
+        }
+
+        // Step 1: who the order is for. A customer orders for himself; a salesperson orders for a customer.
+        // Returns false for any other role.
+        private bool CanOrderFor(User user, User customer)
+        {
+            if (user == null || customer == null || !customer.IsCustomer())
+            {
+                return false;
+            }
+            if (user.IsCustomer())
+            {
+                return user == customer;
+            }
+            return user.IsSalesperson() && user.GetDealership() != null;
+        }
+
+        // Steps 3-4: Sale is always 1 car, Rental is 1 to MAX_CARS_PER_ORDER
+        private bool IsValidOrderCount(string orderType, int count)
+        {
+            if (orderType == DEAL_SALE)
+            {
+                return count == 1;
+            }
+            if (orderType == DEAL_RENTAL)
+            {
+                return count >= 1 && count <= Order.MAX_CARS_PER_ORDER;
+            }
+            return false;
+        }
+
+        // Step 5: the customer limits, checked before any car is chosen.
+        // Returns "" when the order is allowed, otherwise the message to show.
+        private string CheckCustomerLimits(User customer, string orderType, int count)
+        {
+            if (orderType == DEAL_SALE && CountActivePurchaseCars(customer) >= 1)
+            {
+                return "✗ ללקוח כבר יש רכב ברכישה פעילה";
+            }
+            if (orderType == DEAL_RENTAL && count + CountActiveRentalCars(customer) > Order.MAX_CARS_PER_ORDER)
+            {
+                return "✗ חריגה ממגבלת ההשכרה - עד " + Order.MAX_CARS_PER_ORDER + " רכבים בהשכרה פעילה";
+            }
+            return "";
+        }
+
+        // Steps 6-8: can this car join the order being built?
+        // Returns "" when it can, otherwise the reason it was not added.
+        private string CheckCarForOrder(User user, Car car, string orderType, Car[] chosen, int chosenCount)
+        {
+            if (car == null)
+            {
+                return "✗ רכב לא נמצא";
+            }
+            if (!car.IsAvailable())
+            {
+                return "✗ הרכב אינו זמין";
+            }
+            if (!car.SupportsDealType(orderType))
+            {
+                return "✗ הרכב אינו מוצע לסוג העסקה הזה";
+            }
+            for (int i = 0; i < chosenCount; i++)
+            {
+                if (chosen[i] == car)
+                {
+                    return "✗ הרכב כבר נבחר להזמנה";
+                }
+            }
+            if (chosenCount > 0 && car.GetDealership() != chosen[0].GetDealership())
+            {
+                return "✗ כל הרכבים בהזמנה חייבים להיות מאותה סוכנות";
+            }
+            if (user.IsSalesperson() && car.GetDealership() != user.GetDealership())
+            {
+                return "✗ איש מכירות יוצר הזמנות רק על מלאי הסוכנות שלו";
+            }
+            return "";
+        }
+
+        // Steps 10-12: creates the Pending order and only then reserves its cars
+        private bool SaveOrder(User customer, string orderType, Car[] chosen, int chosenCount)
+        {
+            int index = FindFreeOrderIndex();
+            if (index == -1 || chosenCount == 0)
+            {
+                return false;
+            }
+            Order order = new Order(nextOrderNumber, customer, orderType);
+            for (int i = 0; i < chosenCount; i++)
+            {
+                order.AddCar(chosen[i]);
+            }
+            for (int i = 0; i < chosenCount; i++)
+            {
+                chosen[i].MarkAsReserved();
+            }
+            orders[index] = order;
+            orderCount++;
+            nextOrderNumber++;
+            return true;
+        }
+
+        // REQ-011 without keyboard input (used by the tests). carIds holds count car ids.
+        // Every rule is checked before any car changes status; false changes nothing.
+        public bool TryConfirmOrder(User user, User customer, string orderType, int[] carIds, int count)
+        {
+            if (!CanOrderFor(user, customer))
+            {
+                return false;
+            }
+            if (FindFreeOrderIndex() == -1)
+            {
+                return false;
+            }
+            if (carIds == null || count > carIds.Length || !IsValidOrderCount(orderType, count))
+            {
+                return false;
+            }
+            if (CheckCustomerLimits(customer, orderType, count) != "")
+            {
+                return false;
+            }
+
+            Car[] chosen = new Car[Order.MAX_CARS_PER_ORDER];
+            int chosenCount = 0;
+            for (int i = 0; i < count; i++)
+            {
+                Car car = FindCarById(carIds[i]);
+                if (CheckCarForOrder(user, car, orderType, chosen, chosenCount) == "")
+                {
+                    chosen[chosenCount] = car;
+                    chosenCount++;
+                }
+            }
+            return SaveOrder(customer, orderType, chosen, chosenCount);
+        }
+
+        // REQ-011 interactive (design 7.5): customer menu 3, salesperson menu 4. 0 cancels.
+        public bool ConfirmOrder(User user)
+        {
+            User customer = null;
+            if (user != null && user.IsCustomer())
+            {
+                customer = user;
+            }
+            else if (user != null && user.IsSalesperson() && user.GetDealership() != null)
+            {
+                string username = Input.ReadText("שם המשתמש של הלקוח (0 לביטול): ");
+                if (Input.IsCancel(username))
+                {
+                    return false;
+                }
+                customer = FindUserByUsername(username);
+                if (customer == null || !customer.IsCustomer())
+                {
+                    Console.WriteLine("✗ לקוח לא נמצא");
+                    return false;
+                }
+            }
+            else
+            {
+                Console.WriteLine("✗ אין הרשאה לבצע הזמנה");
+                return false;
+            }
+
+            if (FindFreeOrderIndex() == -1)
+            {
+                Console.WriteLine("✗ אין מקום להזמנות נוספות");
+                return false;
+            }
+
+            int typeChoice = Input.ReadInt("סוג עסקה: 1 = רכישה, 2 = השכרה (0 לביטול): ");
+            while (typeChoice != 0 && typeChoice != 1 && typeChoice != 2)
+            {
+                Console.WriteLine("✗ בחירה לא חוקית");
+                typeChoice = Input.ReadInt("סוג עסקה: 1 = רכישה, 2 = השכרה (0 לביטול): ");
+            }
+            if (typeChoice == 0)
+            {
+                return false;
+            }
+            string orderType = DEAL_SALE;
+            if (typeChoice == 2)
+            {
+                orderType = DEAL_RENTAL;
+            }
+
+            int count = 1;
+            if (orderType == DEAL_RENTAL)
+            {
+                count = Input.ReadInt("כמה רכבים (1-" + Order.MAX_CARS_PER_ORDER + "): ");
+                while (count != 0 && !IsValidOrderCount(orderType, count))
+                {
+                    Console.WriteLine("✗ כמות לא חוקית");
+                    count = Input.ReadInt("כמה רכבים (1-" + Order.MAX_CARS_PER_ORDER + "): ");
+                }
+                if (count == 0)
+                {
+                    return false;
+                }
+            }
+
+            string limitError = CheckCustomerLimits(customer, orderType, count);
+            if (limitError != "")
+            {
+                Console.WriteLine(limitError);
+                return false;
+            }
+
+            if (PrintCarsForOrder(user, orderType) == 0)
+            {
+                Console.WriteLine("✗ אין רכבים זמינים לסוג העסקה הזה");
+                return false;
+            }
+
+            Car[] chosen = new Car[Order.MAX_CARS_PER_ORDER];
+            int chosenCount = 0;
+            for (int i = 0; i < count; i++)
+            {
+                int carId = Input.ReadInt("מזהה רכב " + (i + 1) + " (0 לביטול): ");
+                if (carId == 0)
+                {
+                    return false; // nothing was reserved yet
+                }
+                Car car = FindCarById(carId);
+                string carError = CheckCarForOrder(user, car, orderType, chosen, chosenCount);
+                if (carError == "")
+                {
+                    chosen[chosenCount] = car;
+                    chosenCount++;
+                }
+                else
+                {
+                    Console.WriteLine(carError);
+                }
+            }
+
+            if (chosenCount == 0)
+            {
+                Console.WriteLine("✗ לא נבחר אף רכב תקין");
+                return false;
+            }
+            return SaveOrder(customer, orderType, chosen, chosenCount);
+        }
+
+        // Prints the available cars for the deal type (a salesperson sees only his dealership).
+        // Returns how many were printed.
+        private int PrintCarsForOrder(User user, string orderType)
+        {
+            int printed = 0;
+            for (int i = 0; i < carCount; i++)
+            {
+                Car car = cars[i];
+                bool ownStock = !user.IsSalesperson() || car.GetDealership() == user.GetDealership();
+                if (car.IsAvailable() && car.SupportsDealType(orderType) && ownStock)
+                {
+                    Console.WriteLine(car.ToString() + " | " + car.GetDealership().GetName());
+                    printed++;
+                }
+            }
+            return printed;
+        }
     }
 }

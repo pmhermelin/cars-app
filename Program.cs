@@ -186,7 +186,14 @@ namespace CarsApp
                 }
                 else if (choice == 4)
                 {
-                    NotReady("REQ-011");
+                    if (system.ConfirmOrder(user))
+                    {
+                        Console.WriteLine("✓ ההזמנה נוצרה וממתינה לאישור המנהל");
+                    }
+                    else
+                    {
+                        Console.WriteLine("✗ ההזמנה לא נוצרה");
+                    }
                 }
                 else if (choice == 5)
                 {
@@ -263,7 +270,14 @@ namespace CarsApp
                 }
                 else if (choice == 3)
                 {
-                    NotReady("REQ-011");
+                    if (system.ConfirmOrder(user))
+                    {
+                        Console.WriteLine("✓ ההזמנה נוצרה וממתינה לאישור המנהל");
+                    }
+                    else
+                    {
+                        Console.WriteLine("✗ ההזמנה לא נוצרה");
+                    }
                 }
                 else if (choice == 4)
                 {
