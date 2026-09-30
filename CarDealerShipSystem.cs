@@ -862,5 +862,94 @@ namespace CarsApp
             Console.WriteLine("✓ הרכב עודכן בהצלחה");
             return true;
         }
+
+        // ===== REQ-007: change car price (design 7.10) =====
+
+        // REQ-007 (7.10) without keyboard input: manager of the car's dealership, car Available, price > 0.
+        // Returns false and keeps the old price when any rule fails.
+        public bool TryChangeCarPrice(User manager, int carId, double newPrice)
+        {
+            if (manager == null || !manager.IsManager() || manager.GetDealership() == null)
+            {
+                return false;
+            }
+            Car car = FindCarById(carId);
+            if (car == null || car.GetDealership() != manager.GetDealership() || !car.IsAvailable())
+            {
+                return false;
+            }
+            return car.SetPrice(newPrice); // SetPrice rejects price <= 0
+        }
+
+        // Prints the Available cars of a dealership and returns how many were printed
+        private int PrintAvailableCarsOf(CarDealership dealership)
+        {
+            int printed = 0;
+            for (int i = 0; i < carCount; i++)
+            {
+                if (cars[i].GetDealership() == dealership && cars[i].IsAvailable())
+                {
+                    Console.WriteLine(cars[i].ToString());
+                    printed++;
+                }
+            }
+            return printed;
+        }
+
+        // REQ-007 (7.10) interactive: shows the cars first, then asks for the id and the price; 0 cancels.
+        public bool ChangeCarPrice(User manager)
+        {
+            if (manager == null || !manager.IsManager() || manager.GetDealership() == null)
+            {
+                Console.WriteLine("✗ רק מנהל סוכנות רשאי לשנות מחיר");
+                return false;
+            }
+            if (PrintAvailableCarsOf(manager.GetDealership()) == 0)
+            {
+                Console.WriteLine("✗ אין בסוכנות רכבים זמינים לשינוי מחיר");
+                return false;
+            }
+
+            int carId = Input.ReadInt("מזהה רכב (0 לביטול): ");
+            if (carId == 0)
+            {
+                return false;
+            }
+            Car car = FindCarById(carId);
+            if (car == null)
+            {
+                Console.WriteLine("✗ רכב לא נמצא");
+                return false;
+            }
+            if (car.GetDealership() != manager.GetDealership())
+            {
+                Console.WriteLine("✗ הרכב אינו שייך לסוכנות שלך");
+                return false;
+            }
+            if (!car.IsAvailable())
+            {
+                Console.WriteLine("✗ ניתן לשנות מחיר רק לרכב בסטטוס " + STATUS_AVAILABLE + " (סטטוס נוכחי: " + car.GetStatus() + ")");
+                return false;
+            }
+
+            double newPrice = Input.ReadDouble("מחיר חדש (0 לביטול): ");
+            while (newPrice < 0)
+            {
+                Console.WriteLine("✗ המחיר חייב להיות מספר גדול מאפס");
+                newPrice = Input.ReadDouble("מחיר חדש (0 לביטול): ");
+            }
+            if (newPrice == 0)
+            {
+                return false;
+            }
+
+            if (!TryChangeCarPrice(manager, carId, newPrice))
+            {
+                Console.WriteLine("✗ המחיר לא עודכן");
+                return false;
+            }
+            Console.WriteLine("✓ המחיר עודכן בהצלחה");
+            return true;
+        }
     }
 }

@@ -35,6 +35,7 @@ namespace CarsApp
             RunAddSalespersonTests();
             RunInventoryReportTests();
             RunAddCarTests();
+            RunChangePriceTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -298,6 +299,38 @@ namespace CarsApp
             Check(system.CountDealershipCars(haifa) == 1000
                   && !system.TryAddNewCar(boss, "Sedan", "Toyota", "Yaris", 2024, 0, "EXTRA", 50000, "Sale", "Haifa"),
                   "T-06 the 1001st car of a dealership is rejected");
+        }
+
+        // VFDN-105: REQ-007 change car price (design 7.10)
+        private static void RunChangePriceTests()
+        {
+            Console.WriteLine("--- REQ-007 Change car price (VFDN-105) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            CarDealership telAviv = system.FindDealershipById(2);
+            system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", haifa);
+            system.TryCreateUser("dana", "Dana_123", "dana@mail.com", "0521234567", "Customer", null);
+            User boss = system.FindUserByUsername("boss");
+            User dana = system.FindUserByUsername("dana");
+
+            Car car = MakeCar(system, "1000001", 100000, "Sale", haifa);
+            Car reserved = MakeCar(system, "1000002", 80000, "Sale", haifa);
+            Car other = MakeCar(system, "2000001", 70000, "Sale", telAviv);
+            system.AddCarToInventory(car);
+            system.AddCarToInventory(reserved);
+            system.AddCarToInventory(other);
+            reserved.MarkAsReserved();
+
+            Check(system.TryChangeCarPrice(boss, car.GetId(), 95000) && car.GetPrice() == 95000, "manager changes the price of an Available car");
+            Check(!system.TryChangeCarPrice(boss, car.GetId(), 0) && !system.TryChangeCarPrice(boss, car.GetId(), -5)
+                  && car.GetPrice() == 95000, "T-09 price 0 or negative is rejected and the old price is kept");
+            Check(!system.TryChangeCarPrice(boss, reserved.GetId(), 60000) && reserved.GetPrice() == 80000,
+                  "T-26 a Reserved car keeps its price");
+            Check(!system.TryChangeCarPrice(boss, other.GetId(), 60000) && other.GetPrice() == 70000,
+                  "a car of another dealership cannot be changed");
+            Check(!system.TryChangeCarPrice(dana, car.GetId(), 60000) && car.GetPrice() == 95000, "a customer cannot change a price");
+            Check(!system.TryChangeCarPrice(boss, 999, 60000), "unknown car id is rejected");
         }
     }
 }
