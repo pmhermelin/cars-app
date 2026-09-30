@@ -485,6 +485,18 @@ namespace CarsApp
         // ===== REQ-014: add salesperson (design 7.16) =====
 
         // The user must be the logged in user (design decision 15.12), a manager, and linked to a dealership
+        // Design decision 12: a protected action runs only for the user that is logged in now.
+        // Program passes the user as a parameter, so every protected action checks it first.
+        private bool IsCurrentUser(User user)
+        {
+            if (user == null || user != currentUser)
+            {
+                Console.WriteLine("✗ יש להתחבר למערכת לפני ביצוע הפעולה");
+                return false;
+            }
+            return true;
+        }
+
         private bool IsLoggedInManager(User user)
         {
             return user != null && user == currentUser && user.IsManager() && user.GetDealership() != null;
@@ -731,6 +743,10 @@ namespace CarsApp
         // REQ-003 (7.3) interactive: every field is asked again until it is valid; 0 cancels.
         public bool AddNewCar(User user)
         {
+            if (!IsCurrentUser(user))
+            {
+                return false;
+            }
             if (user == null || !(user.IsManager() || user.IsSalesperson()) || user.GetDealership() == null)
             {
                 Console.WriteLine("✗ אין לך הרשאה להוסיף רכב");
@@ -813,6 +829,10 @@ namespace CarsApp
         // REQ-003 (7.4): updates an existing car (not price - that's REQ-007).
         public bool UpdateCar(User user)
         {
+            if (!IsCurrentUser(user))
+            {
+                return false;
+            }
             if ((user.GetRole() != ROLE_MANAGER && user.GetRole() != ROLE_SALESPERSON) || user.GetDealership() == null)
             {
                 Console.WriteLine("✗ אין לך הרשאה לעדכן רכב");
@@ -899,6 +919,10 @@ namespace CarsApp
         // REQ-007 (7.10) interactive: shows the cars first, then asks for the id and the price; 0 cancels.
         public bool ChangeCarPrice(User manager)
         {
+            if (!IsCurrentUser(manager))
+            {
+                return false;
+            }
             if (manager == null || !manager.IsManager() || manager.GetDealership() == null)
             {
                 Console.WriteLine("✗ רק מנהל סוכנות רשאי לשנות מחיר");
@@ -1038,6 +1062,10 @@ namespace CarsApp
 
         public void PrintDealershipInventory(User user)
         {
+            if (!IsCurrentUser(user))
+            {
+                return;
+            }
             if (user == null || !user.IsSalesperson() || user.GetDealership() == null)
             {
                 Console.WriteLine("✗ פעולה זו זמינה רק לאיש מכירות עם סוכנות משויכת");
@@ -1230,6 +1258,10 @@ namespace CarsApp
         // REQ-011 interactive (design 7.5): customer menu 3, salesperson menu 4. 0 cancels.
         public bool ConfirmOrder(User user)
         {
+            if (!IsCurrentUser(user))
+            {
+                return false;
+            }
             User customer = null;
             if (user != null && user.IsCustomer())
             {
@@ -1409,6 +1441,10 @@ namespace CarsApp
         // REQ-004 interactive (design 7.6): customer menu 5. 0 cancels.
         public bool CancelOrder(User customer)
         {
+            if (!IsCurrentUser(customer))
+            {
+                return false;
+            }
             if (customer == null || !customer.IsCustomer())
             {
                 Console.WriteLine("✗ רק לקוח יכול לבטל הזמנה");
@@ -1524,6 +1560,10 @@ namespace CarsApp
         // REQ-005 approve interactive (design 7.7): manager menu 4
         public bool ApproveOrder(User manager)
         {
+            if (!IsCurrentUser(manager))
+            {
+                return false;
+            }
             if (!IsManagerWithDealership(manager))
             {
                 Console.WriteLine("✗ רק מנהל סוכנות יכול לאשר עסקאות");
@@ -1566,6 +1606,10 @@ namespace CarsApp
         // REQ-005 reject interactive (design 7.8): manager menu 4
         public bool RejectOrder(User manager)
         {
+            if (!IsCurrentUser(manager))
+            {
+                return false;
+            }
             if (!IsManagerWithDealership(manager))
             {
                 Console.WriteLine("✗ רק מנהל סוכנות יכול לדחות עסקאות");
@@ -1622,6 +1666,10 @@ namespace CarsApp
         // REQ-008 (design 7.11): salesperson menu 5. Only Approved orders of the salesperson's dealership.
         public void PrintSoldOrRentedCars(User salesperson)
         {
+            if (!IsCurrentUser(salesperson))
+            {
+                return;
+            }
             if (salesperson == null || !salesperson.IsSalesperson() || salesperson.GetDealership() == null)
             {
                 Console.WriteLine("✗ רק איש מכירות יכול לצפות ברכבים שנמכרו או הושכרו");
@@ -1712,6 +1760,10 @@ namespace CarsApp
         // REQ-012 (design 7.14): customer menu 4
         public void PrintCustomerOrders(User customer)
         {
+            if (!IsCurrentUser(customer))
+            {
+                return;
+            }
             if (customer == null || !customer.IsCustomer())
             {
                 Console.WriteLine("✗ רק לקוח יכול לצפות בהזמנות שלו");

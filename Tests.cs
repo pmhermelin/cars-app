@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 namespace CarsApp
 {
@@ -44,6 +45,7 @@ namespace CarsApp
             RunApproveRejectTests();
             RunSoldOrRentedTests();
             RunCustomerOrdersTests();
+            RunDesignRulesTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -693,6 +695,56 @@ namespace CarsApp
                   && system.GetOrderAt(3).GetOrderNumber() == 4,
                   "showing orders does not reorder the orders array");
             Check(system.GetCustomerOrders(system.FindUserByUsername("noa"), results) == 1, "each customer sees only his own orders");
+        }
+
+        // Design decision 12 and the tests that need keyboard input (T-08, T-21).
+        // Console input is replaced by a StringReader so the interactive methods can run without a keyboard.
+        private static void RunDesignRulesTests()
+        {
+            Console.WriteLine("--- Design rules: logged in user, T-08, T-21 (VFDN-133) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            CarDealership telAviv = system.FindDealershipById(2);
+            system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", haifa);
+            system.TryCreateUser("dana", "Dana_123", "dana@mail.com", "0521234567", "Customer", null);
+            User boss = system.FindUserByUsername("boss");
+            User dana = system.FindUserByUsername("dana");
+            Car otherCar = MakeCar(system, "3000001", 70000, "Sale", telAviv);
+            system.AddCarToInventory(otherCar);
+
+            TextReader keyboard = Console.In;
+
+            // Nobody is logged in: every protected action stops before it reads any input
+            Console.SetIn(new StringReader(""));
+            int ordersBefore = system.GetOrderCount();
+            int carsBefore = system.GetCarCount();
+            Check(!system.AddNewCar(boss) && system.GetCarCount() == carsBefore, "not logged in - AddNewCar is blocked");
+            Check(!system.UpdateCar(boss), "not logged in - UpdateCar is blocked");
+            Check(!system.ChangeCarPrice(boss) && otherCar.GetPrice() == 70000, "not logged in - ChangeCarPrice is blocked");
+            Check(!system.ApproveOrder(boss) && !system.RejectOrder(boss), "not logged in - approve and reject are blocked");
+            Check(!system.ConfirmOrder(dana) && system.GetOrderCount() == ordersBefore, "not logged in - ConfirmOrder is blocked");
+            Check(!system.CancelOrder(dana), "not logged in - CancelOrder is blocked");
+
+            // Logged in as dana, but the action is called for boss
+            system.LoginWith("dana", "Dana_123");
+            Check(!system.ChangeCarPrice(boss) && otherCar.GetPrice() == 70000, "a user that is not the logged in user is blocked");
+            system.Logout();
+
+            // T-08: the manager of Haifa tries to update a car of Tel Aviv
+            system.LoginWith("boss", "Boss_123");
+            Console.SetIn(new StringReader("3000001\n2\nNewModel\n"));
+            Check(!system.UpdateCar(boss) && otherCar.GetModel() != "NewModel" && otherCar.GetPrice() == 70000,
+                  "T-08 update of a car of another dealership fails and nothing changes");
+            system.Logout();
+
+            // T-21: text in a number field - TryParse fails, ReadInt returns -1 and nothing crashes
+            Console.SetIn(new StringReader("abc\n12\n"));
+            int first = Input.ReadInt("");
+            int second = Input.ReadInt("");
+            Check(first == -1 && second == 12, "T-21 text in a number field is rejected and the next input is read");
+
+            Console.SetIn(keyboard);
         }
     }
 }
