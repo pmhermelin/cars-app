@@ -36,6 +36,7 @@ namespace CarsApp
             RunInventoryReportTests();
             RunAddCarTests();
             RunChangePriceTests();
+            RunSearchTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -331,6 +332,39 @@ namespace CarsApp
                   "a car of another dealership cannot be changed");
             Check(!system.TryChangeCarPrice(dana, car.GetId(), 60000) && car.GetPrice() == 95000, "a customer cannot change a price");
             Check(!system.TryChangeCarPrice(boss, 999, 60000), "unknown car id is rejected");
+        }
+
+        // VFDN-100: REQ-009 search and filter cars (design 7.12)
+        private static void RunSearchTests()
+        {
+            Console.WriteLine("--- REQ-009 Search cars (VFDN-100) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            Car toyotaSale = new Car(system.GetNextCarId(), "Sedan", "Toyota", "Corolla", 2024, 0, "1000001", 100000, "Sale", "Haifa", haifa);
+            Car kiaRent = new Car(system.GetNextCarId(), "SUV", "Kia", "Sportage", 2020, 0, "1000002", 150000, "Rental", "Haifa", haifa);
+            Car mazdaBoth = new Car(system.GetNextCarId(), "SUV", "Mazda", "CX-5", 2022, 0, "1000003", 120000, "Both", "Haifa", haifa);
+            Car soldToyota = new Car(system.GetNextCarId(), "Sedan", "Toyota", "Yaris", 2024, 0, "1000004", 60000, "Sale", "Haifa", haifa);
+            system.AddCarToInventory(toyotaSale);
+            system.AddCarToInventory(kiaRent);
+            system.AddCarToInventory(mazdaBoth);
+            system.AddCarToInventory(soldToyota);
+            soldToyota.MarkAsReserved();
+            soldToyota.MarkAsSold();
+
+            Car[] results = new Car[system.GetCarCount()];
+            Check(system.SearchCars("", "", 0, 0, 0, "", results) == 3, "T-19 all filters empty returns every Available car");
+            Check(system.SearchCars("", "toyota ", 0, 0, 0, "", results) == 1 && results[0] == toyotaSale,
+                  "manufacturer filter ignores case and spaces; a Sold car is not returned");
+            Check(system.SearchCars("SUV", "", 0, 0, 0, "", results) == 2, "category filter");
+            Check(system.SearchCars("", "", 110000, 130000, 0, "", results) == 1 && results[0] == mazdaBoth, "price range filter");
+            Check(system.SearchCars("", "", 0, 0, 2021, "", results) == 2, "minimum year filter");
+            Check(system.SearchCars("", "", 0, 0, 0, "Sale", results) == 2 && system.SearchCars("", "", 0, 0, 0, "Rental", results) == 2,
+                  "a Both car is found in both purchase and rental searches");
+
+            Car[] empty = new Car[system.GetCarCount()];
+            Check(system.SearchCars("Truck", "", 0, 0, 0, "", empty) == 0 && empty[0] == null,
+                  "T-18 no results returns 0 and the results array is unchanged");
         }
     }
 }
