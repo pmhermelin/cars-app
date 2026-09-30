@@ -39,7 +39,7 @@ namespace CarsApp
             }
             return -1;
         }
-        // Returns -1 when the input is not a valid number
+                // Returns -1 when the input is not a valid number
         public static double ReadDouble(string prompt)
         {
             string text = ReadText(prompt);
@@ -50,6 +50,7 @@ namespace CarsApp
             }
             return -1;
         }
+
         public static bool IsCancel(string text)
         {
             return text == CANCEL;
