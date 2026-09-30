@@ -464,36 +464,54 @@ namespace CarsApp
             }
             return count;
         }
-        
-    // ===== REQ-010: view available cars (design 7.13) =====
 
-    public void PrintAvailableCars()
-    {
-        int totalShown = 0;
-        for (int d = 0; d < dealershipCount; d++)
+        // ===== REQ-010: view available cars (design 7.13) =====
+
+        // Number of Available cars in a dealership, or in the whole system when dealership is null
+        public int CountAvailableCars(CarDealership dealership)
         {
-            CarDealership dealership = dealerships[d];
-            bool headerPrinted = false;
-
+            int count = 0;
             for (int i = 0; i < carCount; i++)
             {
-                Car car = cars[i];
-                if (car.GetDealership() != dealership || !car.IsAvailable()) continue;
-
-                if (!headerPrinted)
+                if (cars[i].IsAvailable() && (dealership == null || cars[i].GetDealership() == dealership))
                 {
-                    Console.WriteLine("--- " + dealership.GetName() + " (" + dealership.GetDealershipType() + ") ---");
-                    headerPrinted = true;
+                    count++;
                 }
-                Console.WriteLine(car.ToString());
-                totalShown++;
+            }
+            return count;
+        }
+
+        public void PrintAvailableCars()
+        {
+            int totalShown = 0;
+            for (int d = 0; d < dealershipCount; d++)
+            {
+                CarDealership dealership = dealerships[d];
+                if (CountAvailableCars(dealership) == 0)
+                {
+                    continue; // a dealership without available cars gets no empty header
+                }
+
+                Console.WriteLine("--- " + dealership.GetName() + " (" + dealership.GetDealershipType() + ") ---");
+                for (int i = 0; i < carCount; i++)
+                {
+                    Car car = cars[i];
+                    if (car.GetDealership() == dealership && car.IsAvailable())
+                    {
+                        Console.WriteLine(car.ToString());
+                        totalShown++;
+                    }
+                }
+            }
+
+            if (totalShown == 0)
+            {
+                Console.WriteLine("אין רכבים זמינים במערכת!");
+            }
+            else
+            {
+                Console.WriteLine("סה\"כ רכבים זמינים: " + totalShown); // design 7.13 step 4
             }
         }
-
-        if (totalShown == 0)
-        {
-            Console.WriteLine("אין רכבים זמינים במערכת!");
-        }
-    }
     }
 }
