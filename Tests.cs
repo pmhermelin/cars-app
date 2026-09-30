@@ -30,6 +30,7 @@ namespace CarsApp
 
             RunInfrastructureTests();
             RunRegisterTests();
+            RunAddCarTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -131,6 +132,47 @@ namespace CarsApp
             }
             Check(!full.HasFreeUserSlot() && !full.TryCreateUser("last", "Pass_123", "last@m.com", "0500000000", "Customer", null),
                   "registration fails when the users array is full");
+        }
+
+        // VFDN-96: REQ-003 add a car (design 7.3)
+        private static void RunAddCarTests()
+        {
+            Console.WriteLine("--- REQ-003 Add car (VFDN-96) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", haifa);
+            system.TryCreateUser("dana", "Dana_123", "dana@mail.com", "0521234567", "Customer", null);
+            User boss = system.FindUserByUsername("boss");
+            User dana = system.FindUserByUsername("dana");
+
+            Check(system.TryAddNewCar(boss, "Sedan", "Toyota", "Corolla", 2024, 1000, "1234567", 100000, "Sale", "Haifa")
+                  && system.GetCarCount() == 1, "manager adds a car");
+            Car car = system.FindCarByLicenseNumber("1234567");
+            Check(car.IsAvailable() && car.GetDealership() == haifa, "new car is Available and belongs to the manager's dealership");
+
+            Check(!system.TryAddNewCar(boss, "SUV", "Kia", "Sportage", 2023, 0, "1234567", 90000, "Rental", "Haifa")
+                  && system.GetCarCount() == 1, "T-05 duplicate license number - no car is created");
+            Check(!system.TryAddNewCar(dana, "SUV", "Kia", "Sportage", 2023, 0, "7654321", 90000, "Rental", "Haifa")
+                  && system.GetCarCount() == 1, "T-07 a customer cannot add a car");
+            Check(!system.TryAddNewCar(boss, "SUV", "Kia", "Sportage", 2023, 0, "7654321", -1, "Rental", "Haifa")
+                  && !system.TryAddNewCar(boss, "SUV", "Kia", "Sportage", 2023, 0, "7654321", 0, "Rental", "Haifa"),
+                  "price -1 or 0 is rejected");
+            Check(!system.TryAddNewCar(boss, "SUV", "Kia", "Sportage", 2023, 0, "7654321", 90000, "", "Haifa"),
+                  "empty deal type is rejected");
+            Check(!system.TryAddNewCar(boss, "", "Kia", "Sportage", 2023, 0, "7654321", 90000, "Rental", "Haifa")
+                  && !system.TryAddNewCar(boss, "SUV", "Kia", "Sportage", 1800, 0, "7654321", 90000, "Rental", "Haifa")
+                  && !system.TryAddNewCar(boss, "SUV", "Kia", "Sportage", 2023, -1, "7654321", 90000, "Rental", "Haifa"),
+                  "blank field, invalid year or negative mileage are rejected");
+            Check(system.GetCarCount() == 1, "failed attempts changed nothing");
+
+            for (int i = system.CountDealershipCars(haifa); i < CarDealerShipSystem.DEALERSHIP_CARS_LIMIT; i++)
+            {
+                system.TryAddNewCar(boss, "Sedan", "Toyota", "Yaris", 2024, 0, "L" + i, 50000, "Sale", "Haifa");
+            }
+            Check(system.CountDealershipCars(haifa) == 1000
+                  && !system.TryAddNewCar(boss, "Sedan", "Toyota", "Yaris", 2024, 0, "EXTRA", 50000, "Sale", "Haifa"),
+                  "T-06 the 1001st car of a dealership is rejected");
         }
     }
 }
