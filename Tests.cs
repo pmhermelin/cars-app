@@ -42,6 +42,7 @@ namespace CarsApp
             RunConfirmOrderTests();
             RunCancelOrderTests();
             RunApproveRejectTests();
+            RunSoldOrRentedTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -611,6 +612,44 @@ namespace CarsApp
             Check(!system.TryApproveOrder(boss, 3) && system.FindCarById(rent3).IsAvailable(),
                   "a Rejected order cannot be approved; car stays Available");
             Check(system.PrintPendingOrdersOfDealership(boss) == 0, "no Pending orders are left");
+        }
+
+        // VFDN-102: REQ-008 sold or rented cars (design 7.11)
+        private static void RunSoldOrRentedTests()
+        {
+            Console.WriteLine("--- REQ-008 Sold or rented cars (VFDN-102) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            CarDealership telAviv = system.FindDealershipById(2);
+            system.TryCreateUser("boss", "Boss_123", "boss@cars.com", "0501111111", "Manager", haifa);
+            system.TryCreateUser("boss2", "Boss_123", "boss2@cars.com", "0502222222", "Manager", telAviv);
+            User boss = system.FindUserByUsername("boss");
+            User otherBoss = system.FindUserByUsername("boss2");
+            User dana = MakeCustomer(system, "dana");
+            User noa = MakeCustomer(system, "noa");
+
+            Check(system.CountSoldOrRentedCars(haifa) == 0, "no closed deals at start");
+
+            int sale1 = AddCar(system, "1000001", "Sale", haifa);
+            int rent1 = AddCar(system, "1000002", "Rental", haifa);
+            int rent2 = AddCar(system, "1000003", "Rental", haifa);
+            int rentTa = AddCar(system, "2000001", "Rental", telAviv);
+            system.TryConfirmOrder(dana, dana, "Sale", new int[] { sale1 }, 1);
+            system.TryConfirmOrder(noa, noa, "Rental", new int[] { rent1 }, 1);
+            system.TryConfirmOrder(noa, noa, "Rental", new int[] { rent2 }, 1);
+            system.TryConfirmOrder(dana, dana, "Rental", new int[] { rentTa }, 1);
+
+            Check(system.CountSoldOrRentedCars(haifa) == 0, "Pending orders are not shown");
+
+            system.TryApproveOrder(boss, 1);
+            system.TryApproveOrder(boss, 2);
+            system.TryRejectOrder(boss, 3);
+            system.TryApproveOrder(otherBoss, 4);
+
+            Check(system.CountSoldOrRentedCars(haifa) == 2, "the sold car and the rented car of the dealership are counted");
+            Check(system.FindCarById(rent2).IsAvailable(), "a rejected order is not counted");
+            Check(system.CountSoldOrRentedCars(telAviv) == 1, "each dealership sees only its own cars");
         }
     }
 }

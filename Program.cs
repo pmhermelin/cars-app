@@ -223,7 +223,7 @@ namespace CarsApp
                 }
                 else if (choice == 5)
                 {
-                    NotReady("REQ-008");
+                    system.PrintSoldOrRentedCars(user);
                 }
                 else if (choice == 6)
                 {
