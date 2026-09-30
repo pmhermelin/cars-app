@@ -307,7 +307,7 @@ namespace CarsApp
                 }
                 else if (choice == 4)
                 {
-                    NotReady("REQ-012");
+                    system.PrintCustomerOrders(user);
                 }
                 else if (choice == 5)
                 {
