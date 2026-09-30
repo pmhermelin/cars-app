@@ -1033,5 +1033,32 @@ namespace CarsApp
                 Console.WriteLine("סה\"כ רכבים זמינים: " + totalShown); // design 7.13 step 4
             }
         }
+
+        // ===== REQ-013: dealership inventory for salesperson (design 7.15) =====
+
+        public void PrintDealershipInventory(User user)
+        {
+            if (user == null || !user.IsSalesperson() || user.GetDealership() == null)
+            {
+                Console.WriteLine("✗ פעולה זו זמינה רק לאיש מכירות עם סוכנות משויכת");
+                return;
+            }
+
+            CarDealership dealership = user.GetDealership();
+            if (CountDealershipCars(dealership) == 0)
+            {
+                Console.WriteLine("אין רכבים במלאי הסוכנות!");
+                return;
+            }
+
+            Console.WriteLine("===== מלאי " + dealership.GetName() + " =====");
+            for (int i = 0; i < carCount; i++)
+            {
+                if (cars[i].GetDealership() == dealership)
+                {
+                    Console.WriteLine(cars[i].ToString()); // every status: Available, Reserved, Sold, Rented
+                }
+            }
+        }
     }
 }

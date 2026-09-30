@@ -174,7 +174,7 @@ namespace CarsApp
 
                 if (choice == 1)
                 {
-                    NotReady("REQ-013");
+                    system.PrintDealershipInventory(user);
                 }
                 else if (choice == 2)
                 {
