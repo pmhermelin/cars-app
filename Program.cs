@@ -290,7 +290,8 @@ namespace CarsApp
                     {
                         for (int i = 0; i < found; i++)
                         {
-                            Console.WriteLine(results[i].ToString());
+                            // REQ-009: car details and the name of its dealership (design 6.7)
+                            Console.WriteLine(results[i].ToString() + " | " + results[i].GetDealership().GetName());
                         }
                     }
                 }
