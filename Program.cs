@@ -226,7 +226,7 @@ namespace CarsApp
 
                 if (choice == 1)
                 {
-                    NotReady("REQ-010");
+                    system.PrintAvailableCars();
                 }
                 else if (choice == 2)
                 {

@@ -37,6 +37,7 @@ namespace CarsApp
             RunAddCarTests();
             RunChangePriceTests();
             RunSearchTests();
+            RunAvailableCarsTests();
 
             Console.WriteLine();
             Console.WriteLine("Passed: " + passed + ", Failed: " + failed);
@@ -365,6 +366,32 @@ namespace CarsApp
             Car[] empty = new Car[system.GetCarCount()];
             Check(system.SearchCars("Truck", "", 0, 0, 0, "", empty) == 0 && empty[0] == null,
                   "T-18 no results returns 0 and the results array is unchanged");
+        }
+
+        // VFDN-103: REQ-010 view available cars (design 7.13)
+        private static void RunAvailableCarsTests()
+        {
+            Console.WriteLine("--- REQ-010 Available cars (VFDN-103) ---");
+
+            CarDealerShipSystem system = new CarDealerShipSystem();
+            CarDealership haifa = system.FindDealershipById(1);
+            CarDealership telAviv = system.FindDealershipById(2);
+            CarDealership jerusalem = system.FindDealershipById(3);
+
+            Check(system.CountAvailableCars(null) == 0, "no cars at start - the empty message is shown");
+
+            Car car1 = MakeCar(system, "1000001", 100000, "Sale", haifa);
+            Car car2 = MakeCar(system, "1000002", 90000, "Rental", haifa);
+            Car car3 = MakeCar(system, "2000001", 80000, "Both", telAviv);
+            system.AddCarToInventory(car1);
+            system.AddCarToInventory(car2);
+            system.AddCarToInventory(car3);
+            car2.MarkAsReserved();
+
+            Check(system.CountAvailableCars(haifa) == 1, "a Reserved car is not counted as available");
+            Check(system.CountAvailableCars(telAviv) == 1, "each dealership counts only its own cars");
+            Check(system.CountAvailableCars(jerusalem) == 0, "a dealership without available cars is skipped (no empty header)");
+            Check(system.CountAvailableCars(null) == 2, "the total summary counts every available car");
         }
     }
 }
